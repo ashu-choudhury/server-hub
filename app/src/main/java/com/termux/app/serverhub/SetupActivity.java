@@ -19,6 +19,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
@@ -49,6 +50,7 @@ public class SetupActivity extends AppCompatActivity {
     private ProgressBar progressStep1Bar;
     private TextView tvStep1StatusMsg;
     private MaterialButton btnStep1Start;
+    private MaterialButton btnRestoreFromBackup;
     private MaterialButton btnPage0Next;
 
     // Page 1: SSH Credentials
@@ -82,6 +84,9 @@ public class SetupActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
+
+    private final ActivityResultLauncher<String> restoreBackupLauncher =
+        registerForActivityResult(new ActivityResultContracts.GetContent(), this::onRestoreBackupFileSelected);
 
     private final BroadcastReceiver wireguardReceiver = new BroadcastReceiver() {
         @Override
@@ -152,6 +157,7 @@ public class SetupActivity extends AppCompatActivity {
         progressStep1Bar = findViewById(R.id.progress_step1_bar);
         tvStep1StatusMsg = findViewById(R.id.tv_step1_status_msg);
         btnStep1Start = findViewById(R.id.btn_step1_start);
+        btnRestoreFromBackup = findViewById(R.id.btn_restore_from_backup);
         btnPage0Next = findViewById(R.id.btn_page0_next);
 
         // Page 1
@@ -189,6 +195,9 @@ public class SetupActivity extends AppCompatActivity {
         btnPage3Back.setOnClickListener(v -> goToPage(2));
 
         btnStep1Start.setOnClickListener(v -> startInstallationProcess());
+        if (btnRestoreFromBackup != null) {
+            btnRestoreFromBackup.setOnClickListener(v -> restoreBackupLauncher.launch("*/*"));
+        }
         btnPage1Apply.setOnClickListener(v -> applySSHPassword());
         btnPage2SelectConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
         btnPage2Connect.setOnClickListener(v -> startWireGuardConnection());
@@ -440,5 +449,45 @@ public class SetupActivity extends AppCompatActivity {
         tvPage3User.setText("Username: " + username);
         tvPage3Ipv6.setText("Public IPv6: " + ipv6);
         tvPage3SshCmd.setText("SSH Command: ssh " + username + "@" + ipv6 + " -p 2222");
+    }
+
+    private void onRestoreBackupFileSelected(@Nullable Uri uri) {
+        if (uri == null) return;
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+            .setTitle("Restoring Sandbox")
+            .setMessage("Reading backup archive from file...")
+            .setCancelable(false)
+            .create();
+        progressDialog.show();
+
+        BackupManager.restoreBackup(this, uri, new BackupManager.RestoreCallback() {
+            @Override
+            public void onProgress(String status) {
+                runOnUiThread(() -> progressDialog.setMessage(status));
+            }
+
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    SetupPreferences.setSetupCompleted(SetupActivity.this, true);
+                    Toast.makeText(SetupActivity.this, "Sandbox restored successfully! Welcome back.", Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(SetupActivity.this, ServerHubActivity.class));
+                    finish();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    new AlertDialog.Builder(SetupActivity.this)
+                        .setTitle("Restore Failed")
+                        .setMessage(error)
+                        .setPositiveButton("OK", null)
+                        .show();
+                });
+            }
+        });
     }
 }

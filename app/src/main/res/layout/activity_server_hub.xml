@@ -160,8 +160,8 @@
                             android:checked="true"
                             android:contentDescription="Toggle WireGuard Tunnel"
                             app:useMaterialThemeColors="false"
-                            app:thumbTint="#00E676"
-                            app:trackTint="#3300E676" />
+                            app:thumbTint="@color/switch_thumb_selector"
+                            app:trackTint="@color/switch_track_selector" />
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -492,8 +492,8 @@
                             android:checked="true"
                             android:contentDescription="Toggle port forwarding firewall"
                             app:useMaterialThemeColors="false"
-                            app:thumbTint="#00E676"
-                            app:trackTint="#3300E676" />
+                            app:thumbTint="@color/switch_thumb_selector"
+                            app:trackTint="@color/switch_track_selector" />
                     </LinearLayout>
 
                     <TextView
@@ -726,7 +726,70 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Group 4: Reset & Setup -->
+                <!-- Group 4: Sandbox Backup & Restore -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SANDBOX BACKUP &amp; RESTORE"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#1A1A1A"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Create a compressed .tar.gz archive of your entire Linux sandbox, installed packages, files, and WireGuard keys to save or send anywhere."
+                            android:textColor="#CCCCCC"
+                            android:textSize="13sp"
+                            android:layout_marginBottom="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_export_backup"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="Export Sandbox Backup (.tar.gz)"
+                            android:textAllCaps="false"
+                            android:textColor="#00E676"
+                            android:contentDescription="Export entire Linux sandbox to compressed backup file"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="#00E676"
+                            android:layout_marginBottom="10dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_restore_backup"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="Restore from Backup File"
+                            android:textAllCaps="false"
+                            android:textColor="#80D8FF"
+                            android:contentDescription="Restore sandbox and configs from backup archive"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="#80D8FF" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Group 5: Reset & Setup -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

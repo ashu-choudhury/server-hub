@@ -149,6 +149,17 @@
                         app:backgroundTint="#6200EE"
                         app:cornerRadius="10dp" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_restore_from_backup"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Have a backup? Restore from Archive (.tar.gz)"
+                        android:textAllCaps="false"
+                        android:textColor="#80D8FF"
+                        android:textSize="13sp" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

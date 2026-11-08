@@ -78,10 +78,15 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     private MaterialButton btnImportConf;
     private MaterialButton btnChangePassword;
     private MaterialButton btnBatterySettings;
+    private MaterialButton btnExportBackup;
+    private MaterialButton btnRestoreBackup;
     private MaterialButton btnOpenSetup;
 
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
+
+    private final ActivityResultLauncher<String> restoreBackupLauncher =
+        registerForActivityResult(new ActivityResultContracts.GetContent(), this::onRestoreBackupSelected);
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -164,6 +169,8 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         btnImportConf = findViewById(R.id.btn_import_conf);
         btnChangePassword = findViewById(R.id.btn_change_password);
         btnBatterySettings = findViewById(R.id.btn_battery_settings);
+        btnExportBackup = findViewById(R.id.btn_export_backup);
+        btnRestoreBackup = findViewById(R.id.btn_restore_backup);
         btnOpenSetup = findViewById(R.id.btn_open_setup);
 
         // Single-tap copy actions
@@ -188,53 +195,52 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             });
         });
 
-        switchTunnel.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!buttonView.isPressed()) return; // User-triggered only
+        // Robust click listener for tunnel master switch (accessible & loop-free)
+        switchTunnel.setOnClickListener(v -> {
+            boolean isChecked = switchTunnel.isChecked();
             if (isChecked) {
                 if (networkStore.getConfig() == null) {
                     switchTunnel.setChecked(false);
                     Toast.makeText(this, "Please import a WireGuard .conf file first", Toast.LENGTH_LONG).show();
                     return;
                 }
+                networkStore.setTunnelActive(true);
                 WireGuardService.startService(this);
                 updateBadge(true);
             } else {
+                networkStore.setTunnelActive(false);
                 WireGuardService.stopService(this);
                 updateBadge(false);
             }
         });
 
-        // Firewall Switch Setup & Accessible Warning Dialog
+        // Robust click listener for firewall switch (accessible & loop-free)
         boolean fwOn = networkStore.isFirewallEnabled();
         switchFirewall.setChecked(fwOn);
         updateFirewallUI(fwOn);
 
-        switchFirewall.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!buttonView.isPressed()) return; // User-triggered only
-            if (!isChecked) {
-                // User wants to disable the firewall: show confirmation & security warning
+        switchFirewall.setOnClickListener(v -> {
+            boolean wantEnabled = switchFirewall.isChecked();
+            if (!wantEnabled) {
+                // User clicked to turn off: keep switch visibly ON until confirmed in dialog
+                switchFirewall.setChecked(true);
                 new AlertDialog.Builder(this)
                     .setTitle("⚠️ Disable Firewall Protection?")
                     .setMessage("Disabling the firewall will expose all incoming ports on your WireGuard address directly to your sandbox environment without rule restrictions.\n\nOnly proceed if you trust incoming network traffic.")
                     .setPositiveButton("Disable Firewall", (dialog, which) -> {
                         networkStore.setFirewallEnabled(false);
                         updateFirewallUI(false);
-                        if (switchTunnel.isChecked()) {
+                        if (switchTunnel != null && switchTunnel.isChecked()) {
                             WireGuardService.restartService(this);
                         }
                         Toast.makeText(this, "Firewall disabled: All incoming ports are open", Toast.LENGTH_LONG).show();
                     })
-                    .setNegativeButton("Keep Protected", (dialog, which) -> {
-                        switchFirewall.setChecked(true);
-                    })
-                    .setOnCancelListener(dialog -> {
-                        switchFirewall.setChecked(true);
-                    })
+                    .setNegativeButton("Keep Protected", null)
                     .show();
             } else {
                 networkStore.setFirewallEnabled(true);
                 updateFirewallUI(true);
-                if (switchTunnel.isChecked()) {
+                if (switchTunnel != null && switchTunnel.isChecked()) {
                     WireGuardService.restartService(this);
                 }
                 Toast.makeText(this, "Firewall enabled: Traffic filtered by port rules", Toast.LENGTH_SHORT).show();
@@ -245,6 +251,8 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         btnImportConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
         btnChangePassword.setOnClickListener(v -> showChangePasswordDialog());
         btnBatterySettings.setOnClickListener(v -> openBatteryOptimizationSettings());
+        btnExportBackup.setOnClickListener(v -> performExportBackup());
+        btnRestoreBackup.setOnClickListener(v -> restoreBackupLauncher.launch("*/*"));
 
         btnOpenSetup.setOnClickListener(v -> {
             Intent intent = new Intent(this, SetupActivity.class);
@@ -254,7 +262,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     }
 
     private void updateFirewallUI(boolean enabled) {
-        if (switchFirewall != null && switchFirewall.isChecked() != enabled) {
+        if (switchFirewall != null) {
             switchFirewall.setChecked(enabled);
         }
         if (enabled) {
@@ -560,5 +568,109 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             clipboard.setPrimaryClip(clip);
             Toast.makeText(this, label + " copied to clipboard", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void performExportBackup() {
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+            .setTitle("Exporting Sandbox Backup")
+            .setMessage("Compressing Linux environment, installed packages, and configs...")
+            .setCancelable(false)
+            .create();
+        progressDialog.show();
+
+        BackupManager.exportBackup(this, new BackupManager.BackupCallback() {
+            @Override
+            public void onProgress(String status) {
+                runOnUiThread(() -> progressDialog.setMessage(status));
+            }
+
+            @Override
+            public void onSuccess(java.io.File backupFile, String details) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    new AlertDialog.Builder(ServerHubActivity.this)
+                        .setTitle("✓ Backup Exported Successfully")
+                        .setMessage(details)
+                        .setPositiveButton("Share Archive", (d, w) -> shareBackupFile(backupFile))
+                        .setNegativeButton("OK", null)
+                        .show();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    new AlertDialog.Builder(ServerHubActivity.this)
+                        .setTitle("Backup Failed")
+                        .setMessage(error)
+                        .setPositiveButton("OK", null)
+                        .show();
+                });
+            }
+        });
+    }
+
+    private void shareBackupFile(java.io.File file) {
+        try {
+            Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
+                this, getPackageName() + ".fileprovider", file);
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("application/gzip");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(shareIntent, "Share Sandbox Backup"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open share menu: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void onRestoreBackupSelected(@Nullable Uri uri) {
+        if (uri == null) return;
+        new AlertDialog.Builder(this)
+            .setTitle("⚠️ Restore Sandbox from Backup?")
+            .setMessage("Restoring from backup will replace your current Linux sandbox and settings with the archive data.\n\nAre you sure you want to proceed?")
+            .setPositiveButton("Restore", (dialog, which) -> {
+                AlertDialog progressDialog = new AlertDialog.Builder(this)
+                    .setTitle("Restoring Sandbox")
+                    .setMessage("Reading backup archive...")
+                    .setCancelable(false)
+                    .create();
+                progressDialog.show();
+
+                BackupManager.restoreBackup(this, uri, new BackupManager.RestoreCallback() {
+                    @Override
+                    public void onProgress(String status) {
+                        runOnUiThread(() -> progressDialog.setMessage(status));
+                    }
+
+                    @Override
+                    public void onSuccess() {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            loadCurrentState();
+                            ServerManager.ensureSSHDRunning(null);
+                            if (switchTunnel != null && switchTunnel.isChecked()) {
+                                WireGuardService.restartService(ServerHubActivity.this);
+                            }
+                            Toast.makeText(ServerHubActivity.this, "Sandbox restored successfully!", Toast.LENGTH_LONG).show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            new AlertDialog.Builder(ServerHubActivity.this)
+                                .setTitle("Restore Failed")
+                                .setMessage(error)
+                                .setPositiveButton("OK", null)
+                                .show();
+                        });
+                    }
+                });
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 }
