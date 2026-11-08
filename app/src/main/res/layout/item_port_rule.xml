@@ -3,11 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardBackgroundColor="#252525"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp"
-    app:strokeColor="#3E3E3E"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="#0A0A0A"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:strokeColor="#1E1E1E"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -15,7 +15,20 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="12dp">
+        android:padding="14dp">
+
+        <TextView
+            android:id="@+id/tv_port_protocol_badge"
+            android:layout_width="44dp"
+            android:layout_height="26dp"
+            android:gravity="center"
+            android:background="#161B22"
+            android:text="TCP"
+            android:textColor="#80D8FF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginEnd="12dp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -27,9 +40,9 @@
                 android:id="@+id/tv_port_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Port 7777 (UDP)"
-                android:textColor="@android:color/white"
-                android:textSize="16sp"
+                android:text="SSH Access (Port 2222)"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -37,26 +50,29 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="NVGT Game Server → 127.0.0.1:7777"
-                android:textColor="#AAAAAA"
-                android:textSize="13sp" />
+                android:fontFamily="monospace"
+                android:text="Ext: 2222 → Int: 127.0.0.1:8022"
+                android:textColor="#888888"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/switch_port_enabled"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:contentDescription="Enable or disable this port rule" />
+            android:layout_marginEnd="4dp"
+            app:useMaterialThemeColors="false"
+            app:thumbTint="#00E676"
+            app:trackTint="#3300E676" />
 
         <ImageButton
             android:id="@+id/btn_delete_port"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close"
             android:contentDescription="Delete port rule"
-            app:tint="#FF5252" />
+            app:tint="#666666" />
 
     </LinearLayout>
 

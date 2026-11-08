@@ -1,22 +1,22 @@
 package com.termux.app.serverhub;
 
-import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.RadioGroup;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -27,8 +27,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
 import com.termux.R;
 import com.termux.app.models.wireguard.PortRule;
 import com.termux.app.models.wireguard.WireGuardConfig;
@@ -44,48 +46,42 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     private WireGuardNetworkStore networkStore;
     private PortRulesAdapter portRulesAdapter;
 
-    // Server Info Views
-    private TextView tvUsername;
-    private TextView tvSshStatus;
+    // Navigation & Tabs
+    private BottomNavigationView bottomNav;
+    private ViewFlipper viewFlipperTabs;
+
+    // Header & Status
+    private View viewStatusDot;
+    private TextView tvStatusBadge;
+
+    // Overview Tab Views
+    private TextView tvHeroStateTitle;
+    private TextView tvHeroStateDesc;
+    private SwitchMaterial switchTunnel;
     private TextView tvPublicIpv6;
-    private TextView tvSshConnectCmd;
-    private MaterialButton btnCopyUser;
     private MaterialButton btnCopyIpv6;
+    private TextView tvSshConnectCmd;
     private MaterialButton btnCopySshCmd;
     private MaterialButton btnRestartSshd;
-    private MaterialButton btnOpenSetup;
-
-    // Tunnel Views
-    private TextView tvStatusBadge;
-    private TextView tvTunnelAddress;
+    private TextView tvUsername;
+    private TextView tvSshStatus;
     private TextView tvTunnelEndpoint;
-    private SwitchMaterial switchTunnel;
+    private TextView tvActivePortsCount;
 
-    // Ports Views
-    private TextView tvEmptyPorts;
+    // Ports Tab Views
     private RecyclerView rvPorts;
+    private TextView tvEmptyPorts;
+    private MaterialButton btnAddPort;
 
-    // Logs Views
-    private TextView tvLogs;
-    private ScrollView scrollLogs;
+    // Settings Tab Views
+    private TextView tvSettingsConfSummary;
+    private MaterialButton btnImportConf;
+    private MaterialButton btnChangePassword;
+    private MaterialButton btnBatterySettings;
+    private MaterialButton btnOpenSetup;
 
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
-
-    private final BroadcastReceiver logReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent != null && WireGuardService.ACTION_LOG_UPDATE.equals(intent.getAction())) {
-                String logLine = intent.getStringExtra(WireGuardService.EXTRA_LOG_LINE);
-                if (logLine != null && tvLogs != null) {
-                    tvLogs.append(logLine + "\n");
-                    if (scrollLogs != null) {
-                        scrollLogs.post(() -> scrollLogs.fullScroll(View.FOCUS_DOWN));
-                    }
-                }
-            }
-        }
-    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -101,32 +97,12 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     @Override
     protected void onStart() {
         super.onStart();
-        IntentFilter filter = new IntentFilter(WireGuardService.ACTION_LOG_UPDATE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(logReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(logReceiver, filter);
-        }
         syncTunnelState();
         refreshServerInfo();
 
-        if (tvLogs != null && tvLogs.getText().toString().isEmpty()) {
-            List<String> logs = WireGuardService.getRecentLogs();
-            for (String l : logs) {
-                tvLogs.append(l + "\n");
-            }
-            if (scrollLogs != null) {
-                scrollLogs.post(() -> scrollLogs.fullScroll(View.FOCUS_DOWN));
-            }
-        }
-
         ServerManager.ensureSSHDRunning(new ServerManager.CommandListener() {
             @Override
-            public void onOutput(@NonNull String line) {
-                runOnUiThread(() -> {
-                    if (tvLogs != null) tvLogs.append(line + "\n");
-                });
-            }
+            public void onOutput(@NonNull String line) {}
             @Override
             public void onComplete(int exitCode) {
                 runOnUiThread(() -> refreshServerInfo());
@@ -134,74 +110,80 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         });
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        try {
-            unregisterReceiver(logReceiver);
-        } catch (Exception ignored) {}
-    }
-
     private void initViews() {
-        // Server Info
-        tvUsername = findViewById(R.id.tv_username);
-        tvSshStatus = findViewById(R.id.tv_ssh_status);
+        // Navigation
+        bottomNav = findViewById(R.id.bottom_navigation);
+        viewFlipperTabs = findViewById(R.id.view_flipper_tabs);
+
+        bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_overview) {
+                viewFlipperTabs.setDisplayedChild(0);
+                return true;
+            } else if (id == R.id.nav_ports) {
+                viewFlipperTabs.setDisplayedChild(1);
+                refreshPorts();
+                return true;
+            } else if (id == R.id.nav_settings) {
+                viewFlipperTabs.setDisplayedChild(2);
+                updateSettingsSummary();
+                return true;
+            }
+            return false;
+        });
+
+        // Top Status Header
+        viewStatusDot = findViewById(R.id.view_status_dot);
+        tvStatusBadge = findViewById(R.id.tv_status_badge);
+
+        // Overview Tab
+        tvHeroStateTitle = findViewById(R.id.tv_hero_state_title);
+        tvHeroStateDesc = findViewById(R.id.tv_hero_state_desc);
+        switchTunnel = findViewById(R.id.switch_tunnel);
         tvPublicIpv6 = findViewById(R.id.tv_public_ipv6);
-        tvSshConnectCmd = findViewById(R.id.tv_ssh_connect_cmd);
-        btnCopyUser = findViewById(R.id.btn_copy_user);
         btnCopyIpv6 = findViewById(R.id.btn_copy_ipv6);
+        tvSshConnectCmd = findViewById(R.id.tv_ssh_connect_cmd);
         btnCopySshCmd = findViewById(R.id.btn_copy_ssh_cmd);
         btnRestartSshd = findViewById(R.id.btn_restart_sshd);
-        btnOpenSetup = findViewById(R.id.btn_open_setup);
-
-        // Tunnel
-        tvStatusBadge = findViewById(R.id.tv_status_badge);
-        tvTunnelAddress = findViewById(R.id.tv_tunnel_address);
+        tvUsername = findViewById(R.id.tv_username);
+        tvSshStatus = findViewById(R.id.tv_ssh_status);
         tvTunnelEndpoint = findViewById(R.id.tv_tunnel_endpoint);
-        switchTunnel = findViewById(R.id.switch_tunnel);
+        tvActivePortsCount = findViewById(R.id.tv_active_ports_count);
 
-        // Ports
-        tvEmptyPorts = findViewById(R.id.tv_empty_ports);
+        // Ports Tab
         rvPorts = findViewById(R.id.rv_ports);
+        tvEmptyPorts = findViewById(R.id.tv_empty_ports);
+        btnAddPort = findViewById(R.id.btn_add_port);
 
-        // Logs
-        tvLogs = findViewById(R.id.tv_logs);
-        scrollLogs = findViewById(R.id.scroll_logs);
-
-        // Port Recycler
         rvPorts.setLayoutManager(new LinearLayoutManager(this));
         portRulesAdapter = new PortRulesAdapter(this);
         rvPorts.setAdapter(portRulesAdapter);
 
-        // Button Listeners
-        findViewById(R.id.btn_import_conf).setOnClickListener(v -> importConfLauncher.launch("*/*"));
-        findViewById(R.id.btn_add_port).setOnClickListener(v -> showAddPortDialog());
-        findViewById(R.id.btn_clear_logs).setOnClickListener(v -> tvLogs.setText(""));
+        // Settings Tab
+        tvSettingsConfSummary = findViewById(R.id.tv_settings_conf_summary);
+        btnImportConf = findViewById(R.id.btn_import_conf);
+        btnChangePassword = findViewById(R.id.btn_change_password);
+        btnBatterySettings = findViewById(R.id.btn_battery_settings);
+        btnOpenSetup = findViewById(R.id.btn_open_setup);
 
-        btnOpenSetup.setOnClickListener(v -> {
-            Intent intent = new Intent(this, SetupActivity.class);
-            intent.putExtra(SetupActivity.EXTRA_FORCE_SETUP, true);
-            startActivity(intent);
-        });
-
-        btnCopyUser.setOnClickListener(v -> copyToClipboard("Username", tvUsername.getText().toString()));
+        // Actions
         btnCopyIpv6.setOnClickListener(v -> copyToClipboard("IPv6", tvPublicIpv6.getText().toString()));
         btnCopySshCmd.setOnClickListener(v -> copyToClipboard("SSH Command", tvSshConnectCmd.getText().toString()));
 
         btnRestartSshd.setOnClickListener(v -> {
             btnRestartSshd.setEnabled(false);
-            tvLogs.append("[SSH] Restarting OpenSSH daemon...\n");
+            btnRestartSshd.setText("Restarting...");
             ServerManager.restartSSHD(new ServerManager.CommandListener() {
                 @Override
-                public void onOutput(@NonNull String line) {
-                    tvLogs.append(line + "\n");
-                }
-
+                public void onOutput(@NonNull String line) {}
                 @Override
                 public void onComplete(int exitCode) {
-                    btnRestartSshd.setEnabled(true);
-                    refreshServerInfo();
-                    Toast.makeText(ServerHubActivity.this, "OpenSSH service restarted", Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> {
+                        btnRestartSshd.setEnabled(true);
+                        btnRestartSshd.setText("Restart SSH");
+                        refreshServerInfo();
+                        Toast.makeText(ServerHubActivity.this, "OpenSSH service restarted", Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         });
@@ -221,21 +203,23 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 updateBadge(false);
             }
         });
+
+        btnAddPort.setOnClickListener(v -> showAddPortDialog());
+        btnImportConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
+        btnChangePassword.setOnClickListener(v -> showChangePasswordDialog());
+        btnBatterySettings.setOnClickListener(v -> openBatteryOptimizationSettings());
+
+        btnOpenSetup.setOnClickListener(v -> {
+            Intent intent = new Intent(this, SetupActivity.class);
+            intent.putExtra(SetupActivity.EXTRA_FORCE_SETUP, true);
+            startActivity(intent);
+        });
     }
 
     private void loadCurrentState() {
         refreshServerInfo();
-
-        WireGuardConfig config = networkStore.getConfig();
-        if (config != null) {
-            tvTunnelAddress.setText("Tunnel IP: " + (config.getAddress() != null ? config.getAddress() : "-"));
-            tvTunnelEndpoint.setText("Endpoint: " + (config.getEndpoint() != null ? config.getEndpoint() : "-"));
-        } else {
-            tvTunnelAddress.setText("Tunnel IP: No config loaded");
-            tvTunnelEndpoint.setText("Endpoint: - ");
-        }
-
         refreshPorts();
+        updateSettingsSummary();
     }
 
     private void refreshServerInfo() {
@@ -247,7 +231,13 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 config.getAddress().replaceAll("/.*", "") : "No config loaded";
         tvPublicIpv6.setText(ipv6);
 
-        // Check if SSH port rule exists
+        if (config != null && config.getEndpoint() != null) {
+            tvTunnelEndpoint.setText(config.getEndpoint());
+        } else {
+            tvTunnelEndpoint.setText("No Broker Loaded");
+        }
+
+        // Check if external SSH port rule exists
         int sshExternalPort = 2222;
         List<PortRule> rules = networkStore.getPortRules();
         for (PortRule r : rules) {
@@ -263,15 +253,21 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             tvSshConnectCmd.setText("ssh " + username + "@[IPv6] -p " + sshExternalPort);
         }
 
+        int activeCount = 0;
+        for (PortRule r : rules) {
+            if (r.isEnabled()) activeCount++;
+        }
+        tvActivePortsCount.setText(activeCount + " Active Rule" + (activeCount == 1 ? "" : "s"));
+
         new Thread(() -> {
             boolean running = ServerManager.isSSHDRunning();
             runOnUiThread(() -> {
                 if (running) {
-                    tvSshStatus.setText("Internal Port 8022 (Active)");
-                    tvSshStatus.setTextColor(Color.parseColor("#B9F6CA"));
+                    tvSshStatus.setText("Port 8022 (Active)");
+                    tvSshStatus.setTextColor(Color.parseColor("#00E676"));
                 } else {
-                    tvSshStatus.setText("Internal Port 8022 (Stopped)");
-                    tvSshStatus.setTextColor(Color.parseColor("#FF8A80"));
+                    tvSshStatus.setText("Port 8022 (Stopped)");
+                    tvSshStatus.setTextColor(Color.parseColor("#FF5252"));
                 }
             });
         }).start();
@@ -289,13 +285,19 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
     private void updateBadge(boolean active) {
         if (active) {
-            tvStatusBadge.setText("TUNNEL: ACTIVE");
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#1B5E20"));
-            tvStatusBadge.setTextColor(Color.parseColor("#B9F6CA"));
+            tvStatusBadge.setText("ONLINE");
+            tvStatusBadge.setBackgroundColor(Color.parseColor("#102A16"));
+            tvStatusBadge.setTextColor(Color.parseColor("#00E676"));
+            viewStatusDot.setBackgroundColor(Color.parseColor("#00E676"));
+            tvHeroStateTitle.setText("Server Online");
+            tvHeroStateDesc.setText("WireGuard userspace tunnel connected");
         } else {
-            tvStatusBadge.setText("TUNNEL: OFF");
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#333333"));
-            tvStatusBadge.setTextColor(Color.parseColor("#FF8A80"));
+            tvStatusBadge.setText("PAUSED");
+            tvStatusBadge.setBackgroundColor(Color.parseColor("#201212"));
+            tvStatusBadge.setTextColor(Color.parseColor("#FF5252"));
+            viewStatusDot.setBackgroundColor(Color.parseColor("#FF5252"));
+            tvHeroStateTitle.setText("Server Paused");
+            tvHeroStateDesc.setText("Tap switch above to activate WireGuard tunnel");
         }
     }
 
@@ -308,6 +310,18 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             tvEmptyPorts.setVisibility(View.GONE);
             rvPorts.setVisibility(View.VISIBLE);
             portRulesAdapter.submitList(rules);
+        }
+        refreshServerInfo();
+    }
+
+    private void updateSettingsSummary() {
+        WireGuardConfig config = networkStore.getConfig();
+        if (config != null) {
+            String addr = config.getAddress() != null ? config.getAddress() : "-";
+            String ep = config.getEndpoint() != null ? config.getEndpoint() : "-";
+            tvSettingsConfSummary.setText("Tunnel IP: " + addr + "\nEndpoint: " + ep);
+        } else {
+            tvSettingsConfSummary.setText("No WireGuard .conf file imported yet.");
         }
     }
 
@@ -349,9 +363,8 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         EditText etDest = dialogView.findViewById(R.id.et_target_port);
 
         new AlertDialog.Builder(this)
-            .setTitle("Add Port Forwarding Rule")
             .setView(dialogView)
-            .setPositiveButton("Add", (dialog, which) -> {
+            .setPositiveButton("Add Rule", (dialog, which) -> {
                 String name = etName.getText().toString().trim();
                 if (name.isEmpty()) name = "Rule " + (networkStore.getPortRules().size() + 1);
 
@@ -370,7 +383,6 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 PortRule rule = new PortRule(name, proto, listenPort, "127.0.0.1", destPort, true);
                 networkStore.addPortRule(rule);
                 refreshPorts();
-                refreshServerInfo();
 
                 if (switchTunnel.isChecked()) {
                     WireGuardService.restartService(this);
@@ -380,10 +392,76 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             .show();
     }
 
+    private void showChangePasswordDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_change_password, null, false);
+        TextInputEditText etPass = view.findViewById(R.id.et_dialog_new_password);
+        TextInputEditText etConfirm = view.findViewById(R.id.et_dialog_confirm_password);
+
+        new AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton("Save Password", (dialog, which) -> {
+                String pass = etPass.getText() != null ? etPass.getText().toString().trim() : "";
+                String confirm = etConfirm.getText() != null ? etConfirm.getText().toString().trim() : "";
+
+                if (pass.length() < 4) {
+                    Toast.makeText(this, "Password must be at least 4 characters", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!pass.equals(confirm)) {
+                    Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                ServerManager.setSSHPassword(pass, new ServerManager.CommandListener() {
+                    @Override
+                    public void onOutput(@NonNull String line) {}
+                    @Override
+                    public void onComplete(int exitCode) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(ServerHubActivity.this, "SSH password updated successfully!", Toast.LENGTH_SHORT).show();
+                            refreshServerInfo();
+                        });
+                    }
+                });
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void openBatteryOptimizationSettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Intent intent = new Intent();
+                String packageName = getPackageName();
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                    intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + packageName));
+                } else {
+                    intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                }
+                startActivity(intent);
+            } else {
+                openAppDetails();
+            }
+        } catch (Exception e) {
+            openAppDetails();
+        }
+    }
+
+    private void openAppDetails() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public void onRuleToggled(PortRule rule, boolean enabled) {
         rule.setEnabled(enabled);
         networkStore.savePortRules(portRulesAdapter.getCurrentRules());
+        refreshServerInfo();
         if (switchTunnel.isChecked()) {
             WireGuardService.restartService(this);
         }
@@ -393,7 +471,6 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     public void onRuleDeleted(PortRule rule) {
         networkStore.removePortRule(rule.getId());
         refreshPorts();
-        refreshServerInfo();
         if (switchTunnel.isChecked()) {
             WireGuardService.restartService(this);
         }

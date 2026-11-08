@@ -4,16 +4,24 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="20dp"
-    android:background="#202020">
+    android:padding="24dp"
+    android:background="#0A0A0A">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Add Open Port"
-        android:textColor="@android:color/white"
-        android:textSize="20sp"
+        android:text="Add Port Forwarding Rule"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
         android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Route incoming traffic from WireGuard into sandbox"
+        android:textColor="#888888"
+        android:textSize="12sp"
         android:layout_marginBottom="16dp" />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -21,9 +29,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
-        android:hint="Rule Name / Label"
-        app:boxStrokeColor="#BB86FC"
-        app:hintTextColor="#BB86FC">
+        android:hint="Rule Name (e.g. NVGT Game)"
+        app:boxStrokeColor="#00E676"
+        app:hintTextColor="#00E676">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_rule_name"
@@ -47,8 +55,8 @@
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:hint="External Port"
-            app:boxStrokeColor="#BB86FC"
-            app:hintTextColor="#BB86FC">
+            app:boxStrokeColor="#00E676"
+            app:hintTextColor="#00E676">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_port_number"
@@ -66,8 +74,8 @@
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:hint="Local Target Port"
-            app:boxStrokeColor="#BB86FC"
-            app:hintTextColor="#BB86FC">
+            app:boxStrokeColor="#00E676"
+            app:hintTextColor="#00E676">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_target_port"
@@ -85,21 +93,20 @@
         android:layout_height="wrap_content"
         android:text="Protocol:"
         android:textColor="#CCCCCC"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:layout_marginBottom="6dp" />
 
     <RadioGroup
         android:id="@+id/rg_protocol"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:orientation="horizontal">
 
         <RadioButton
             android:id="@+id/rb_udp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="UDP (Game / ENet)"
+            android:text="UDP (Games / NVGT)"
             android:checked="true"
             android:textColor="@android:color/white" />
 
@@ -107,7 +114,7 @@
             android:id="@+id/rb_tcp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
+            android:layout_marginStart="20dp"
             android:text="TCP (SSH / Web)"
             android:textColor="@android:color/white" />
 

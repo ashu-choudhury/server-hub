@@ -56,8 +56,15 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
     @Override
     public void onBindViewHolder(@NonNull PortRuleViewHolder holder, int position) {
         PortRule rule = rules.get(position);
-        holder.tvTitle.setText(String.format("Port %d (%s)", rule.getPort(), rule.getProtocol().toUpperCase()));
-        holder.tvDescription.setText(String.format("%s → %s:%d", rule.getName(), rule.getTargetHost(), rule.getTargetPort()));
+        boolean isTcp = "tcp".equalsIgnoreCase(rule.getProtocol());
+        if (holder.tvBadge != null) {
+            holder.tvBadge.setText(isTcp ? "TCP" : "UDP");
+            holder.tvBadge.setBackgroundColor(android.graphics.Color.parseColor(isTcp ? "#102A38" : "#281A38"));
+            holder.tvBadge.setTextColor(android.graphics.Color.parseColor(isTcp ? "#80D8FF" : "#E1BEE7"));
+        }
+
+        holder.tvTitle.setText(rule.getName() + " (Port " + rule.getPort() + ")");
+        holder.tvDescription.setText(String.format("Ext: %d → Int: %s:%d", rule.getPort(), rule.getTargetHost(), rule.getTargetPort()));
 
         holder.switchEnabled.setOnCheckedChangeListener(null);
         holder.switchEnabled.setChecked(rule.isEnabled());
@@ -80,6 +87,7 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
     }
 
     static class PortRuleViewHolder extends RecyclerView.ViewHolder {
+        final TextView tvBadge;
         final TextView tvTitle;
         final TextView tvDescription;
         final SwitchMaterial switchEnabled;
@@ -87,6 +95,7 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
 
         PortRuleViewHolder(@NonNull View itemView) {
             super(itemView);
+            tvBadge = itemView.findViewById(R.id.tv_port_protocol_badge);
             tvTitle = itemView.findViewById(R.id.tv_port_title);
             tvDescription = itemView.findViewById(R.id.tv_port_description);
             switchEnabled = itemView.findViewById(R.id.switch_port_enabled);
