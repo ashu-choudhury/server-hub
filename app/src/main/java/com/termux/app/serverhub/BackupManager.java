@@ -174,10 +174,32 @@ public class BackupManager {
                 postProgress(callback, "Restoring executable permissions...");
                 try {
                     Runtime.getRuntime().exec(new String[] {
-                        "/system/bin/chmod", "-R", "700",
+                        "/system/bin/chmod", "-R", "755",
                         "/data/data/com.termux/files/usr/bin",
+                        "/data/data/com.termux/files/usr/lib",
                         "/data/data/com.termux/files/usr/libexec"
                     }).waitFor();
+
+                    Runtime.getRuntime().exec(new String[] {
+                        "/system/bin/chmod", "700",
+                        "/data/data/com.termux/files/home"
+                    }).waitFor();
+
+                    File sshDir = new File("/data/data/com.termux/files/home/.ssh");
+                    if (sshDir.exists()) {
+                        Runtime.getRuntime().exec(new String[] {
+                            "/system/bin/chmod", "-R", "700",
+                            sshDir.getAbsolutePath()
+                        }).waitFor();
+                    }
+
+                    File etcSsh = new File("/data/data/com.termux/files/usr/etc/ssh");
+                    if (etcSsh.exists()) {
+                        Runtime.getRuntime().exec(new String[] {
+                            "/system/bin/chmod", "755",
+                            etcSsh.getAbsolutePath()
+                        }).waitFor();
+                    }
                 } catch (Exception ignored) {}
 
                 // Verify restored state

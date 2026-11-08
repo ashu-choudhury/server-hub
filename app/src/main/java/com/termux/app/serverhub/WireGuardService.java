@@ -39,6 +39,30 @@ public class WireGuardService extends Service {
     public static final String EXTRA_LOG_LINE = "log_line";
     public static final String ACTION_HANDSHAKE_OK = "com.termux.app.wireguard.HANDSHAKE_OK";
 
+    public interface TunnelStateListener {
+        void onTunnelStateChanged(boolean running);
+    }
+
+    private static final List<TunnelStateListener> stateListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public static void addStateListener(@NonNull TunnelStateListener listener) {
+        if (!stateListeners.contains(listener)) {
+            stateListeners.add(listener);
+        }
+    }
+
+    public static void removeStateListener(@NonNull TunnelStateListener listener) {
+        stateListeners.remove(listener);
+    }
+
+    private static void notifyTunnelState(boolean running) {
+        for (TunnelStateListener listener : stateListeners) {
+            try {
+                listener.onTunnelStateChanged(running);
+            } catch (Exception ignored) {}
+        }
+    }
+
     private static volatile boolean isRunning = false;
     private static final List<String> recentLogs = Collections.synchronizedList(new ArrayList<>());
     private static final int MAX_LOG_LINES = 150;
@@ -158,6 +182,7 @@ public class WireGuardService extends Service {
             wireguardProcess = pb.start();
             isRunning = true;
             networkStore.setTunnelActive(true);
+            notifyTunnelState(true);
 
             appendLog("[SUCCESS] WireGuard userspace process started (PID active)");
 
@@ -173,11 +198,14 @@ public class WireGuardService extends Service {
             appendLog("[SYSTEM] WireGuard process exited with code " + exitCode);
 
         } catch (Exception e) {
-            appendLog("[ERROR] Failed to run WireGuard engine: " + e.getMessage());
-            Logger.logStackTraceWithMessage(LOG_TAG, "WireGuard process failure", e);
+            if (!(e instanceof java.io.InterruptedIOException)) {
+                appendLog("[ERROR] Failed to run WireGuard engine: " + e.getMessage());
+                Logger.logStackTraceWithMessage(LOG_TAG, "WireGuard process failure", e);
+            }
         } finally {
             isRunning = false;
             networkStore.setTunnelActive(false);
+            notifyTunnelState(false);
             releaseWakeLock();
             stopForeground(true);
             stopSelf();
@@ -196,7 +224,10 @@ public class WireGuardService extends Service {
             wireguardProcess = null;
         }
         isRunning = false;
-        networkStore.setTunnelActive(false);
+        if (networkStore != null) {
+            networkStore.setTunnelActive(false);
+        }
+        notifyTunnelState(false);
         releaseWakeLock();
         stopForeground(true);
     }

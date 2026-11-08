@@ -82,6 +82,32 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     private MaterialButton btnRestoreBackup;
     private MaterialButton btnOpenSetup;
 
+    private boolean isInternalTunnelChange = false;
+    private boolean isInternalFirewallChange = false;
+
+    private final WireGuardService.TunnelStateListener tunnelStateListener = running -> {
+        runOnUiThread(() -> {
+            setTunnelSwitchChecked(running);
+            updateBadge(running);
+        });
+    };
+
+    private void setTunnelSwitchChecked(boolean checked) {
+        isInternalTunnelChange = true;
+        if (switchTunnel != null) {
+            switchTunnel.setChecked(checked);
+        }
+        isInternalTunnelChange = false;
+    }
+
+    private void setFirewallSwitchChecked(boolean checked) {
+        isInternalFirewallChange = true;
+        if (switchFirewall != null) {
+            switchFirewall.setChecked(checked);
+        }
+        isInternalFirewallChange = false;
+    }
+
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
 
@@ -102,6 +128,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     @Override
     protected void onStart() {
         super.onStart();
+        WireGuardService.addStateListener(tunnelStateListener);
         syncTunnelState();
         refreshServerInfo();
 
@@ -115,6 +142,12 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         });
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        WireGuardService.removeStateListener(tunnelStateListener);
+    }
+
     private void initViews() {
         // Navigation
         bottomNav = findViewById(R.id.bottom_navigation);
@@ -124,6 +157,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             int id = item.getItemId();
             if (id == R.id.nav_overview) {
                 viewFlipperTabs.setDisplayedChild(0);
+                syncTunnelState();
                 refreshServerInfo();
                 return true;
             } else if (id == R.id.nav_ports) {
@@ -175,7 +209,28 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
         // Single-tap copy actions
         cardSshConnect.setOnClickListener(v -> copyToClipboard("SSH Command", tvSshConnectCmd.getText().toString()));
-        tvPublicIpv6.setOnClickListener(v -> copyToClipboard("IPv6 Address", tvPublicIpv6.getText().toString()));
+        tvPublicIpv6.setOnLongClickListener(v -> {
+            copyToClipboard("IPv6 Address", tvPublicIpv6.getText().toString());
+            return true;
+        });
+
+        // Top status badge tap action
+        if (tvStatusBadge != null) {
+            tvStatusBadge.setOnClickListener(v -> {
+                if (!WireGuardService.isServiceRunning()) {
+                    if (networkStore.getConfig() == null) {
+                        Toast.makeText(this, "Please import a WireGuard .conf file first", Toast.LENGTH_LONG).show();
+                    } else {
+                        setTunnelSwitchChecked(true);
+                        networkStore.setTunnelActive(true);
+                        WireGuardService.startService(this);
+                        updateBadge(true);
+                    }
+                } else {
+                    Toast.makeText(this, "WireGuard tunnel is online", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
 
         btnRestartSshd.setOnClickListener(v -> {
             btnRestartSshd.setEnabled(false);
@@ -195,12 +250,22 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             });
         });
 
-        // Robust click listener for tunnel master switch (accessible & loop-free)
-        switchTunnel.setOnClickListener(v -> {
-            boolean isChecked = switchTunnel.isChecked();
+        // Tapping the card toggles the tunnel switch
+        View cardHeroStatus = findViewById(R.id.card_hero_status);
+        if (cardHeroStatus != null) {
+            cardHeroStatus.setOnClickListener(v -> {
+                if (switchTunnel != null) {
+                    switchTunnel.toggle();
+                }
+            });
+        }
+
+        // Robust checked listener for tunnel master switch (supports tap, swipe & card click)
+        switchTunnel.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (isInternalTunnelChange) return;
             if (isChecked) {
                 if (networkStore.getConfig() == null) {
-                    switchTunnel.setChecked(false);
+                    setTunnelSwitchChecked(false);
                     Toast.makeText(this, "Please import a WireGuard .conf file first", Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -214,21 +279,32 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             }
         });
 
-        // Robust click listener for firewall switch (accessible & loop-free)
+        // Tapping firewall card toggles firewall switch
+        View cardFirewall = findViewById(R.id.card_firewall);
+        if (cardFirewall != null) {
+            cardFirewall.setOnClickListener(v -> {
+                if (switchFirewall != null) {
+                    switchFirewall.toggle();
+                }
+            });
+        }
+
+        // Robust checked listener for firewall switch (supports tap, swipe & card click)
         boolean fwOn = networkStore.isFirewallEnabled();
-        switchFirewall.setChecked(fwOn);
+        setFirewallSwitchChecked(fwOn);
         updateFirewallUI(fwOn);
 
-        switchFirewall.setOnClickListener(v -> {
-            boolean wantEnabled = switchFirewall.isChecked();
-            if (!wantEnabled) {
-                // User clicked to turn off: keep switch visibly ON until confirmed in dialog
-                switchFirewall.setChecked(true);
+        switchFirewall.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (isInternalFirewallChange) return;
+            if (!isChecked) {
+                // Keep switch ON visually until confirmed
+                setFirewallSwitchChecked(true);
                 new AlertDialog.Builder(this)
                     .setTitle("⚠️ Disable Firewall Protection?")
                     .setMessage("Disabling the firewall will expose all incoming ports on your WireGuard address directly to your sandbox environment without rule restrictions.\n\nOnly proceed if you trust incoming network traffic.")
                     .setPositiveButton("Disable Firewall", (dialog, which) -> {
                         networkStore.setFirewallEnabled(false);
+                        setFirewallSwitchChecked(false);
                         updateFirewallUI(false);
                         if (switchTunnel != null && switchTunnel.isChecked()) {
                             WireGuardService.restartService(this);
@@ -262,9 +338,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     }
 
     private void updateFirewallUI(boolean enabled) {
-        if (switchFirewall != null) {
-            switchFirewall.setChecked(enabled);
-        }
+        setFirewallSwitchChecked(enabled);
         if (enabled) {
             if (tvFirewallStatusDesc != null) {
                 tvFirewallStatusDesc.setText("● Firewall Active: Only allowed rules below forward traffic to your sandbox.");
@@ -357,7 +431,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             WireGuardService.startService(this);
             active = true;
         }
-        if (switchTunnel != null) switchTunnel.setChecked(active);
+        setTunnelSwitchChecked(active);
         updateBadge(active);
     }
 
