@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- Top Minimalist App Bar -->
+    <!-- Top Minimal Header Bar -->
     <LinearLayout
         android:id="@+id/layout_top_bar"
         android:layout_width="match_parent"
@@ -23,53 +22,39 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <View
-                    android:id="@+id/view_status_dot"
-                    android:layout_width="8dp"
-                    android:layout_height="8dp"
-                    android:background="#00E676"
-                    android:layout_marginEnd="8dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="SERVER HUB"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.08" />
-            </LinearLayout>
+            <View
+                android:id="@+id/view_status_dot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="#00E676"
+                android:layout_marginEnd="10dp" />
 
             <TextView
-                android:id="@+id/tv_header_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Userspace WireGuard • Headless Linux"
-                android:textColor="#666666"
-                android:textSize="12sp" />
+                android:text="Server Hub"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.01" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tv_status_badge"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
             android:background="#111111"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
+            android:paddingHorizontal="14dp"
             android:text="ONLINE"
             android:textColor="#00E676"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:letterSpacing="0.05" />
+            android:letterSpacing="0.06"
+            android:contentDescription="Server status: Online" />
     </LinearLayout>
 
     <View
@@ -77,7 +62,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_below="@id/layout_top_bar"
-        android:background="#141414" />
+        android:background="#161616" />
 
     <!-- Bottom Navigation Bar -->
     <View
@@ -85,7 +70,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_above="@id/bottom_navigation"
-        android:background="#141414" />
+        android:background="#161616" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
@@ -120,18 +105,81 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
-                <!-- Hero Status & Power Card -->
+                <!-- Hero IP & Tunnel Toggle Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_hero_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Public IPv6 Tunnel"
+                                android:textColor="#888888"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tv_public_ipv6"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:fontFamily="monospace"
+                                android:text="2a11:6c7:f07:71a::2"
+                                android:textColor="#FFFFFF"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/switch_master_tunnel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="48dp"
+                            android:minHeight="48dp"
+                            android:checked="true"
+                            android:contentDescription="Toggle WireGuard Tunnel"
+                            app:useMaterialThemeColors="false"
+                            app:thumbTint="#00E676"
+                            app:trackTint="#3300E676" />
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- SSH Quick-Connect Card (Single-tap copy) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_ssh_connect"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:contentDescription="Copy SSH connection command. Double tap to copy to clipboard."
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -145,360 +193,225 @@
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
-                            android:layout_marginBottom="16dp">
+                            android:layout_marginBottom="10dp">
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:id="@+id/tv_hero_state_title"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Server Online"
-                                    android:textColor="#FFFFFF"
-                                    android:textSize="20sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:id="@+id/tv_hero_state_desc"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="2dp"
-                                    android:text="WireGuard userspace tunnel connected"
-                                    android:textColor="#888888"
-                                    android:textSize="13sp" />
-                            </LinearLayout>
-
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/switch_tunnel"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                app:useMaterialThemeColors="false"
-                                app:thumbTint="#00E676"
-                                app:trackTint="#3300E676" />
-                        </LinearLayout>
-
-                        <!-- Public IPv6 Pill -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:background="#121212"
-                            android:padding="14dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="PUBLIC IPV6 ADDRESS"
+                                android:text="SSH Connect Command"
                                 android:textColor="#888888"
-                                android:textSize="11sp"
-                                android:letterSpacing="0.08"
-                                android:textStyle="bold"
-                                android:layout_marginBottom="4dp" />
+                                android:textSize="13sp" />
 
                             <LinearLayout
-                                android:layout_width="match_parent"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:orientation="horizontal"
                                 android:gravity="center_vertical">
 
-                                <TextView
-                                    android:id="@+id/tv_public_ipv6"
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:fontFamily="monospace"
-                                    android:text="2a11:6c7:f07:71a::2"
-                                    android:textColor="#00E676"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold" />
+                                <ImageView
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:src="@drawable/ic_copy"
+                                    android:layout_marginEnd="5dp"
+                                    app:tint="#00E676" />
 
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btn_copy_ipv6"
-                                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                                <TextView
                                     android:layout_width="wrap_content"
-                                    android:layout_height="36dp"
-                                    android:text="Copy"
-                                    android:textColor="#BB86FC"
+                                    android:layout_height="wrap_content"
+                                    android:text="Tap to Copy"
+                                    android:textColor="#00E676"
                                     android:textSize="12sp"
-                                    android:minWidth="0dp"
-                                    android:paddingHorizontal="10dp"
-                                    app:icon="@drawable/ic_copy"
-                                    app:iconSize="14dp"
-                                    app:iconTint="#BB86FC" />
+                                    android:textStyle="bold" />
                             </LinearLayout>
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tv_ssh_connect_cmd"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:text="ssh u0_a398@2a11:6c7:f07:71a::2 -p 2222"
+                            android:textColor="#80D8FF"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="6dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Double-tap card to copy SSH terminal command"
+                            android:textColor="#555555"
+                            android:textSize="12sp" />
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- SSH Terminal Connection Card -->
+                <!-- Outlined Restart SSH Action -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_restart_sshd"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Restart SSH Daemon (Port 8022)"
+                    android:textAllCaps="false"
+                    android:textColor="#CCCCCC"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="24dp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="#222222" />
+
+                <!-- Environment & Status (Clean List Style) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ENVIRONMENT STATUS"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_ssh_connect"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="16dp"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
+                        android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="SSH ACCESS COMMAND"
-                            android:textColor="#888888"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="8dp" />
-
+                        <!-- Item 1: Linux User -->
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:background="#050505"
-                            android:padding="14dp"
-                            android:layout_marginBottom="12dp">
-
-                            <TextView
-                                android:id="@+id/tv_ssh_connect_cmd"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="monospace"
-                                android:text="ssh u0_a398@2a11:6c7:f07:71a::2 -p 2222"
-                                android:textColor="#80D8FF"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="52dp"
                             android:orientation="horizontal"
-                            android:gravity="center_vertical">
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="18dp">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_copy_ssh_cmd"
+                            <TextView
                                 android:layout_width="0dp"
-                                android:layout_height="46dp"
+                                android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Copy Command"
-                                android:textAllCaps="false"
-                                android:textColor="@android:color/black"
-                                android:textSize="13sp"
-                                android:textStyle="bold"
-                                app:backgroundTint="#00E676"
-                                app:cornerRadius="8dp"
-                                app:icon="@drawable/ic_copy"
-                                app:iconSize="16dp"
-                                app:iconTint="@android:color/black" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_restart_sshd"
-                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="46dp"
-                                android:layout_marginStart="10dp"
-                                android:text="Restart SSH"
-                                android:textAllCaps="false"
+                                android:text="Sandbox User"
                                 android:textColor="#CCCCCC"
-                                android:textSize="12sp"
-                                app:cornerRadius="8dp"
-                                app:strokeColor="#333333" />
-                                android:text="Restart SSH"
-                                android:textColor="#AAAAAA"
-                                android:textSize="12sp"
-                                app:cornerRadius="8dp"
-                                app:strokeColor="#333333" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- System Stats 2x2 Grid -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="10dp">
-
-                    <!-- Box 1: User -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="6dp"
-                        app:cardBackgroundColor="#0A0A0A"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="#1E1E1E"
-                        app:strokeWidth="1dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="14dp">
+                                android:textSize="14sp" />
 
                             <TextView
+                                android:id="@+id/tv_local_user"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="LINUX USER"
-                                android:textColor="#666666"
-                                android:textSize="10sp"
-                                android:letterSpacing="0.08"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_username"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
                                 android:fontFamily="monospace"
                                 android:text="u0_a398"
                                 android:textColor="#FFFFFF"
-                                android:textSize="15sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Box 2: OpenSSH Daemon -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        app:cardBackgroundColor="#0A0A0A"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="#1E1E1E"
-                        app:strokeWidth="1dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#141414" />
 
+                        <!-- Item 2: SSH Daemon -->
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="14dp">
+                            android:layout_height="52dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="18dp">
 
                             <TextView
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:text="INTERNAL SSH"
-                                android:textColor="#666666"
-                                android:textSize="10sp"
-                                android:letterSpacing="0.08"
-                                android:textStyle="bold" />
+                                android:layout_weight="1"
+                                android:text="Internal SSH Server"
+                                android:textColor="#CCCCCC"
+                                android:textSize="14sp" />
 
                             <TextView
                                 android:id="@+id/tv_ssh_status"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
                                 android:fontFamily="monospace"
                                 android:text="Port 8022 (Active)"
                                 android:textColor="#00E676"
                                 android:textSize="14sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="16dp">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#141414" />
 
-                    <!-- Box 3: Broker -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="6dp"
-                        app:cardBackgroundColor="#0A0A0A"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="#1E1E1E"
-                        app:strokeWidth="1dp">
-
+                        <!-- Item 3: Active Ports -->
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="14dp">
+                            android:layout_height="52dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="18dp">
 
                             <TextView
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:text="TUNNEL BROKER"
-                                android:textColor="#666666"
-                                android:textSize="10sp"
-                                android:letterSpacing="0.08"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_tunnel_endpoint"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:ellipsize="middle"
-                                android:fontFamily="monospace"
-                                android:maxLines="1"
-                                android:text="Route48 Endpoint"
+                                android:layout_weight="1"
+                                android:text="Forwarded Ports"
                                 android:textColor="#CCCCCC"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <!-- Box 4: Active Ports Count -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        app:cardBackgroundColor="#0A0A0A"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="#1E1E1E"
-                        app:strokeWidth="1dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="14dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="ROUTED PORTS"
-                                android:textColor="#666666"
-                                android:textSize="10sp"
-                                android:letterSpacing="0.08"
-                                android:textStyle="bold" />
+                                android:textSize="14sp" />
 
                             <TextView
                                 android:id="@+id/tv_active_ports_count"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
                                 android:fontFamily="monospace"
-                                android:text="2 Ports Forwarded"
+                                android:text="2 Active Rules"
                                 android:textColor="#BB86FC"
                                 android:textSize="14sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#141414" />
+
+                        <!-- Item 4: Firewall Status -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="18dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Firewall Filter"
+                                android:textColor="#CCCCCC"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/tv_overview_firewall_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Active (Protected)"
+                                android:textColor="#00E676"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
@@ -509,68 +422,124 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:padding="20dp"
             android:background="#000000">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Port Forwarding"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.01" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="16dp"
+                android:text="Route incoming tunnel traffic to your sandbox games and services"
+                android:textColor="#888888"
+                android:textSize="13sp" />
+
+            <!-- Top Firewall Protection Toggle Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_firewall"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="#0D0D0D"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#1A1A1A"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_shield"
+                            android:layout_marginEnd="10dp"
+                            app:tint="#00E676" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Port Forwarding Firewall"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/switch_firewall"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="48dp"
+                            android:minHeight="48dp"
+                            android:checked="true"
+                            android:contentDescription="Toggle port forwarding firewall"
+                            app:useMaterialThemeColors="false"
+                            app:thumbTint="#00E676"
+                            app:trackTint="#3300E676" />
+                    </LinearLayout>
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tv_firewall_status_desc"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Port Routing"
-                        android:textColor="#FFFFFF"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Public WireGuard ports forwarded to sandbox"
-                        android:textColor="#888888"
+                        android:layout_marginTop="8dp"
+                        android:text="● Firewall Active: Only allowed rules below forward traffic to your sandbox."
+                        android:textColor="#00E676"
                         android:textSize="13sp" />
-                </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_add_port"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="+ Add Port"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/black"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="#00E676"
-                    app:cornerRadius="8dp" />
-            </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Prominent Add Port Rule Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_port"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="16dp"
+                android:text="+ Add Port Rule"
+                android:textAllCaps="false"
+                android:textColor="@android:color/black"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:contentDescription="Add new port forwarding rule"
+                app:backgroundTint="#00E676"
+                app:cornerRadius="12dp" />
 
             <TextView
                 android:id="@+id/tv_empty_ports"
                 android:layout_width="match_parent"
                 android:layout_height="140dp"
                 android:gravity="center"
-                android:text="No port forwarding rules configured.\nTap '+ Add Port' above to forward games or services."
+                android:text="No custom port rules added.\nTap '+ Add Port Rule' to route gaming or web traffic."
                 android:textColor="#666666"
                 android:textSize="14sp"
                 android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_ports"
+                android:id="@+id/rv_port_rules"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:clipToPadding="false" />
+
         </LinearLayout>
 
         <!-- ================= PAGE 2: SETTINGS & TOOLS ================= -->
@@ -585,26 +554,46 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Settings &amp; Tools"
                     android:textColor="#FFFFFF"
-                    android:textSize="20sp"
+                    android:textSize="22sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="16dp" />
+                    android:letterSpacing="-0.01" />
 
-                <!-- WireGuard Config Section -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="20dp"
+                    android:text="Configuration, security, and background keep-alive"
+                    android:textColor="#888888"
+                    android:textSize="13sp" />
+
+                <!-- Group 1: WireGuard Connection -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WIREGUARD CONFIGURATION"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="14dp"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -614,21 +603,11 @@
                         android:padding="18dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="WIREGUARD CONFIGURATION"
-                            android:textColor="#888888"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="6dp" />
-
-                        <TextView
                             android:id="@+id/tv_settings_conf_summary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:fontFamily="monospace"
-                            android:text="Config: Active | Route48 Broker"
+                            android:text="Tunnel IP: 2a11:6c7:f07:71a::2/64"
                             android:textColor="#CCCCCC"
                             android:textSize="13sp"
                             android:layout_marginBottom="14dp" />
@@ -637,24 +616,36 @@
                             android:id="@+id/btn_import_conf"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:text="Import New .conf File"
                             android:textAllCaps="false"
                             android:textColor="#BB86FC"
-                            app:cornerRadius="8dp"
+                            android:contentDescription="Import new WireGuard configuration file"
+                            app:cornerRadius="12dp"
                             app:strokeColor="#BB86FC" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- SSH Security Card -->
+                <!-- Group 2: Security & Authentication -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTHENTICATION &amp; ACCESS"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="14dp"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -664,19 +655,9 @@
                         android:padding="18dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="AUTHENTICATION"
-                            android:textColor="#888888"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="6dp" />
-
-                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Update your Linux user password for remote SSH logins."
+                            android:text="Update your Linux user password for remote SSH connections."
                             android:textColor="#CCCCCC"
                             android:textSize="13sp"
                             android:layout_marginBottom="14dp" />
@@ -685,24 +666,36 @@
                             android:id="@+id/btn_change_password"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:text="Change SSH Password"
                             android:textAllCaps="false"
                             android:textColor="#00E676"
-                            app:cornerRadius="8dp"
+                            android:contentDescription="Change SSH user login password"
+                            app:cornerRadius="12dp"
                             app:strokeColor="#00E676" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Background & Battery Card -->
+                <!-- Group 3: System & Optimization -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM &amp; BACKGROUND EXECUTION"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="14dp"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -712,19 +705,9 @@
                         android:padding="18dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="BATTERY &amp; CPU KEEP-ALIVE"
-                            android:textColor="#888888"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="6dp" />
-
-                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="To ensure games and SSH remain 100% online with the screen off, set battery usage to Unrestricted."
+                            android:text="To ensure games and SSH remain 100% online with the screen turned off, set battery usage to Unrestricted."
                             android:textColor="#CCCCCC"
                             android:textSize="13sp"
                             android:layout_marginBottom="14dp" />
@@ -733,24 +716,36 @@
                             android:id="@+id/btn_battery_settings"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:text="Configure Battery Settings"
                             android:textAllCaps="false"
                             android:textColor="#64B5F6"
-                            app:cornerRadius="8dp"
+                            android:contentDescription="Open Android battery optimization settings"
+                            app:cornerRadius="12dp"
                             app:strokeColor="#64B5F6" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Re-run Setup Wizard -->
+                <!-- Group 4: Reset & Setup -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MAINTENANCE"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    app:cardBackgroundColor="#0A0A0A"
-                    app:cardCornerRadius="14dp"
+                    android:layout_marginBottom="30dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="#1E1E1E"
+                    app:strokeColor="#1A1A1A"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -760,19 +755,9 @@
                         android:padding="18dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="WIZARD"
-                            android:textColor="#888888"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="6dp" />
-
-                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Need to re-initialize your sandbox, SSH server, or tunnel from scratch?"
+                            android:text="Re-run the initial environment setup, packages, and WireGuard import wizard."
                             android:textColor="#CCCCCC"
                             android:textSize="13sp"
                             android:layout_marginBottom="14dp" />
@@ -781,12 +766,13 @@
                             android:id="@+id/btn_open_setup"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:text="Relaunch Setup Wizard"
                             android:textAllCaps="false"
-                            android:textColor="#AAAAAA"
-                            app:cornerRadius="8dp"
-                            app:strokeColor="#444444" />
+                            android:textColor="#888888"
+                            android:contentDescription="Relaunch initial setup wizard"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="#333333" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 

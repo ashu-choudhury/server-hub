@@ -59,12 +59,13 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
         boolean isTcp = "tcp".equalsIgnoreCase(rule.getProtocol());
         if (holder.tvBadge != null) {
             holder.tvBadge.setText(isTcp ? "TCP" : "UDP");
+            holder.tvBadge.setContentDescription("Protocol: " + (isTcp ? "TCP" : "UDP"));
             holder.tvBadge.setBackgroundColor(android.graphics.Color.parseColor(isTcp ? "#102A38" : "#281A38"));
             holder.tvBadge.setTextColor(android.graphics.Color.parseColor(isTcp ? "#80D8FF" : "#E1BEE7"));
         }
 
         holder.tvTitle.setText(rule.getName() + " (Port " + rule.getPort() + ")");
-        holder.tvDescription.setText(String.format("Ext: %d → Int: %s:%d", rule.getPort(), rule.getTargetHost(), rule.getTargetPort()));
+        holder.tvDescription.setText(String.format("Port %d → %s:%d", rule.getPort(), rule.getTargetHost(), rule.getTargetPort()));
 
         holder.switchEnabled.setOnCheckedChangeListener(null);
         holder.switchEnabled.setChecked(rule.isEnabled());
@@ -73,9 +74,12 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
 
         holder.switchEnabled.setOnCheckedChangeListener((btn, isChecked) -> {
             rule.setEnabled(isChecked);
+            holder.switchEnabled.setContentDescription(String.format("%s on port %d, %s",
+                rule.getName(), rule.getPort(), isChecked ? "enabled" : "disabled"));
             if (listener != null) listener.onRuleToggled(rule, isChecked);
         });
 
+        holder.btnDelete.setContentDescription("Delete port rule " + rule.getName());
         holder.btnDelete.setOnClickListener(v -> {
             if (listener != null) listener.onRuleDeleted(rule);
         });

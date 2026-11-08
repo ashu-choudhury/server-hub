@@ -23,6 +23,7 @@ public class WireGuardNetworkStore {
     private static final String KEY_CONFIG = "wireguard_config";
     private static final String KEY_PORTS = "port_rules";
     private static final String KEY_TUNNEL_ACTIVE = "tunnel_active";
+    private static final String KEY_FIREWALL_ENABLED = "firewall_enabled";
 
     private final SharedPreferences prefs;
     private final Context context;
@@ -107,6 +108,14 @@ public class WireGuardNetworkStore {
         prefs.edit().putBoolean(KEY_TUNNEL_ACTIVE, active).apply();
     }
 
+    public boolean isFirewallEnabled() {
+        return prefs.getBoolean(KEY_FIREWALL_ENABLED, true);
+    }
+
+    public void setFirewallEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_FIREWALL_ENABLED, enabled).apply();
+    }
+
     @NonNull
     public File getWireproxyConfigFile() {
         File configDir = new File(context.getFilesDir(), "wireguard");
@@ -158,9 +167,11 @@ public class WireGuardNetworkStore {
         }
 
         // Append port forwarding rules with the exact syntax expected by wireproxy
+        boolean firewallOn = isFirewallEnabled();
         List<PortRule> rules = getPortRules();
         for (PortRule rule : rules) {
-            if (!rule.isEnabled()) continue;
+            // When firewall is on, only forward enabled rules. When firewall is off, expose all rules.
+            if (firewallOn && !rule.isEnabled()) continue;
             if ("udp".equalsIgnoreCase(rule.getProtocol())) {
                 sb.append("\n[UDPServerTunnel]\n");
                 sb.append("ListenPort = ").append(rule.getListenPort()).append("\n");

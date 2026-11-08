@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.termux.R;
@@ -55,20 +56,19 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     private TextView tvStatusBadge;
 
     // Overview Tab Views
-    private TextView tvHeroStateTitle;
-    private TextView tvHeroStateDesc;
     private SwitchMaterial switchTunnel;
     private TextView tvPublicIpv6;
-    private MaterialButton btnCopyIpv6;
+    private MaterialCardView cardSshConnect;
     private TextView tvSshConnectCmd;
-    private MaterialButton btnCopySshCmd;
     private MaterialButton btnRestartSshd;
     private TextView tvUsername;
     private TextView tvSshStatus;
-    private TextView tvTunnelEndpoint;
     private TextView tvActivePortsCount;
+    private TextView tvOverviewFirewallStatus;
 
     // Ports Tab Views
+    private SwitchMaterial switchFirewall;
+    private TextView tvFirewallStatusDesc;
     private RecyclerView rvPorts;
     private TextView tvEmptyPorts;
     private MaterialButton btnAddPort;
@@ -119,6 +119,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             int id = item.getItemId();
             if (id == R.id.nav_overview) {
                 viewFlipperTabs.setDisplayedChild(0);
+                refreshServerInfo();
                 return true;
             } else if (id == R.id.nav_ports) {
                 viewFlipperTabs.setDisplayedChild(1);
@@ -137,21 +138,20 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         tvStatusBadge = findViewById(R.id.tv_status_badge);
 
         // Overview Tab
-        tvHeroStateTitle = findViewById(R.id.tv_hero_state_title);
-        tvHeroStateDesc = findViewById(R.id.tv_hero_state_desc);
-        switchTunnel = findViewById(R.id.switch_tunnel);
+        switchTunnel = findViewById(R.id.switch_master_tunnel);
         tvPublicIpv6 = findViewById(R.id.tv_public_ipv6);
-        btnCopyIpv6 = findViewById(R.id.btn_copy_ipv6);
+        cardSshConnect = findViewById(R.id.card_ssh_connect);
         tvSshConnectCmd = findViewById(R.id.tv_ssh_connect_cmd);
-        btnCopySshCmd = findViewById(R.id.btn_copy_ssh_cmd);
         btnRestartSshd = findViewById(R.id.btn_restart_sshd);
-        tvUsername = findViewById(R.id.tv_username);
+        tvUsername = findViewById(R.id.tv_local_user);
         tvSshStatus = findViewById(R.id.tv_ssh_status);
-        tvTunnelEndpoint = findViewById(R.id.tv_tunnel_endpoint);
         tvActivePortsCount = findViewById(R.id.tv_active_ports_count);
+        tvOverviewFirewallStatus = findViewById(R.id.tv_overview_firewall_status);
 
         // Ports Tab
-        rvPorts = findViewById(R.id.rv_ports);
+        switchFirewall = findViewById(R.id.switch_firewall);
+        tvFirewallStatusDesc = findViewById(R.id.tv_firewall_status_desc);
+        rvPorts = findViewById(R.id.rv_port_rules);
         tvEmptyPorts = findViewById(R.id.tv_empty_ports);
         btnAddPort = findViewById(R.id.btn_add_port);
 
@@ -166,13 +166,13 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         btnBatterySettings = findViewById(R.id.btn_battery_settings);
         btnOpenSetup = findViewById(R.id.btn_open_setup);
 
-        // Actions
-        btnCopyIpv6.setOnClickListener(v -> copyToClipboard("IPv6", tvPublicIpv6.getText().toString()));
-        btnCopySshCmd.setOnClickListener(v -> copyToClipboard("SSH Command", tvSshConnectCmd.getText().toString()));
+        // Single-tap copy actions
+        cardSshConnect.setOnClickListener(v -> copyToClipboard("SSH Command", tvSshConnectCmd.getText().toString()));
+        tvPublicIpv6.setOnClickListener(v -> copyToClipboard("IPv6 Address", tvPublicIpv6.getText().toString()));
 
         btnRestartSshd.setOnClickListener(v -> {
             btnRestartSshd.setEnabled(false);
-            btnRestartSshd.setText("Restarting...");
+            btnRestartSshd.setText("Restarting SSH daemon...");
             ServerManager.restartSSHD(new ServerManager.CommandListener() {
                 @Override
                 public void onOutput(@NonNull String line) {}
@@ -180,9 +180,9 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 public void onComplete(int exitCode) {
                     runOnUiThread(() -> {
                         btnRestartSshd.setEnabled(true);
-                        btnRestartSshd.setText("Restart SSH");
+                        btnRestartSshd.setText("Restart SSH Daemon (Port 8022)");
                         refreshServerInfo();
-                        Toast.makeText(ServerHubActivity.this, "OpenSSH service restarted", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ServerHubActivity.this, "SSH server restarted", Toast.LENGTH_SHORT).show();
                     });
                 }
             });
@@ -204,6 +204,43 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             }
         });
 
+        // Firewall Switch Setup & Accessible Warning Dialog
+        boolean fwOn = networkStore.isFirewallEnabled();
+        switchFirewall.setChecked(fwOn);
+        updateFirewallUI(fwOn);
+
+        switchFirewall.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!buttonView.isPressed()) return; // User-triggered only
+            if (!isChecked) {
+                // User wants to disable the firewall: show confirmation & security warning
+                new AlertDialog.Builder(this)
+                    .setTitle("⚠️ Disable Firewall Protection?")
+                    .setMessage("Disabling the firewall will expose all incoming ports on your WireGuard address directly to your sandbox environment without rule restrictions.\n\nOnly proceed if you trust incoming network traffic.")
+                    .setPositiveButton("Disable Firewall", (dialog, which) -> {
+                        networkStore.setFirewallEnabled(false);
+                        updateFirewallUI(false);
+                        if (switchTunnel.isChecked()) {
+                            WireGuardService.restartService(this);
+                        }
+                        Toast.makeText(this, "Firewall disabled: All incoming ports are open", Toast.LENGTH_LONG).show();
+                    })
+                    .setNegativeButton("Keep Protected", (dialog, which) -> {
+                        switchFirewall.setChecked(true);
+                    })
+                    .setOnCancelListener(dialog -> {
+                        switchFirewall.setChecked(true);
+                    })
+                    .show();
+            } else {
+                networkStore.setFirewallEnabled(true);
+                updateFirewallUI(true);
+                if (switchTunnel.isChecked()) {
+                    WireGuardService.restartService(this);
+                }
+                Toast.makeText(this, "Firewall enabled: Traffic filtered by port rules", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         btnAddPort.setOnClickListener(v -> showAddPortDialog());
         btnImportConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
         btnChangePassword.setOnClickListener(v -> showChangePasswordDialog());
@@ -216,6 +253,37 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         });
     }
 
+    private void updateFirewallUI(boolean enabled) {
+        if (switchFirewall != null && switchFirewall.isChecked() != enabled) {
+            switchFirewall.setChecked(enabled);
+        }
+        if (enabled) {
+            if (tvFirewallStatusDesc != null) {
+                tvFirewallStatusDesc.setText("● Firewall Active: Only allowed rules below forward traffic to your sandbox.");
+                tvFirewallStatusDesc.setTextColor(Color.parseColor("#00E676"));
+            }
+            if (tvOverviewFirewallStatus != null) {
+                tvOverviewFirewallStatus.setText("Active (Protected)");
+                tvOverviewFirewallStatus.setTextColor(Color.parseColor("#00E676"));
+            }
+            if (switchFirewall != null) {
+                switchFirewall.setContentDescription("Port forwarding firewall is currently enabled and protecting sandbox");
+            }
+        } else {
+            if (tvFirewallStatusDesc != null) {
+                tvFirewallStatusDesc.setText("⚠️ Firewall Disabled: All incoming ports are open to sandbox services.");
+                tvFirewallStatusDesc.setTextColor(Color.parseColor("#FFB300"));
+            }
+            if (tvOverviewFirewallStatus != null) {
+                tvOverviewFirewallStatus.setText("Disabled (Open DMZ)");
+                tvOverviewFirewallStatus.setTextColor(Color.parseColor("#FFB300"));
+            }
+            if (switchFirewall != null) {
+                switchFirewall.setContentDescription("Warning: Port forwarding firewall is currently disabled, all incoming ports are open");
+            }
+        }
+    }
+
     private void loadCurrentState() {
         refreshServerInfo();
         refreshPorts();
@@ -224,18 +292,12 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
     private void refreshServerInfo() {
         String username = ServerManager.getUsername();
-        tvUsername.setText(username);
+        if (tvUsername != null) tvUsername.setText(username);
 
         WireGuardConfig config = networkStore.getConfig();
         String ipv6 = (config != null && config.getAddress() != null) ?
                 config.getAddress().replaceAll("/.*", "") : "No config loaded";
-        tvPublicIpv6.setText(ipv6);
-
-        if (config != null && config.getEndpoint() != null) {
-            tvTunnelEndpoint.setText(config.getEndpoint());
-        } else {
-            tvTunnelEndpoint.setText("No Broker Loaded");
-        }
+        if (tvPublicIpv6 != null) tvPublicIpv6.setText(ipv6);
 
         // Check if external SSH port rule exists
         int sshExternalPort = 2222;
@@ -247,27 +309,35 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             }
         }
 
-        if (config != null && config.getAddress() != null) {
-            tvSshConnectCmd.setText("ssh " + username + "@" + ipv6 + " -p " + sshExternalPort);
-        } else {
-            tvSshConnectCmd.setText("ssh " + username + "@[IPv6] -p " + sshExternalPort);
+        String sshCmd = "ssh " + username + "@" + (config != null && config.getAddress() != null ? ipv6 : "[IPv6]") + " -p " + sshExternalPort;
+        if (tvSshConnectCmd != null) {
+            tvSshConnectCmd.setText(sshCmd);
+        }
+        if (cardSshConnect != null) {
+            cardSshConnect.setContentDescription("SSH connection command: " + sshCmd + ". Tap to copy to clipboard.");
         }
 
         int activeCount = 0;
         for (PortRule r : rules) {
             if (r.isEnabled()) activeCount++;
         }
-        tvActivePortsCount.setText(activeCount + " Active Rule" + (activeCount == 1 ? "" : "s"));
+        if (tvActivePortsCount != null) {
+            tvActivePortsCount.setText(activeCount + " Active Rule" + (activeCount == 1 ? "" : "s"));
+        }
+
+        updateFirewallUI(networkStore.isFirewallEnabled());
 
         new Thread(() -> {
             boolean running = ServerManager.isSSHDRunning();
             runOnUiThread(() -> {
-                if (running) {
-                    tvSshStatus.setText("Port 8022 (Active)");
-                    tvSshStatus.setTextColor(Color.parseColor("#00E676"));
-                } else {
-                    tvSshStatus.setText("Port 8022 (Stopped)");
-                    tvSshStatus.setTextColor(Color.parseColor("#FF5252"));
+                if (tvSshStatus != null) {
+                    if (running) {
+                        tvSshStatus.setText("Port 8022 (Active)");
+                        tvSshStatus.setTextColor(Color.parseColor("#00E676"));
+                    } else {
+                        tvSshStatus.setText("Port 8022 (Stopped)");
+                        tvSshStatus.setTextColor(Color.parseColor("#FF5252"));
+                    }
                 }
             });
         }).start();
@@ -279,38 +349,41 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             WireGuardService.startService(this);
             active = true;
         }
-        switchTunnel.setChecked(active);
+        if (switchTunnel != null) switchTunnel.setChecked(active);
         updateBadge(active);
     }
 
     private void updateBadge(boolean active) {
-        if (active) {
-            tvStatusBadge.setText("ONLINE");
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#102A16"));
-            tvStatusBadge.setTextColor(Color.parseColor("#00E676"));
-            viewStatusDot.setBackgroundColor(Color.parseColor("#00E676"));
-            tvHeroStateTitle.setText("Server Online");
-            tvHeroStateDesc.setText("WireGuard userspace tunnel connected");
-        } else {
-            tvStatusBadge.setText("PAUSED");
-            tvStatusBadge.setBackgroundColor(Color.parseColor("#201212"));
-            tvStatusBadge.setTextColor(Color.parseColor("#FF5252"));
-            viewStatusDot.setBackgroundColor(Color.parseColor("#FF5252"));
-            tvHeroStateTitle.setText("Server Paused");
-            tvHeroStateDesc.setText("Tap switch above to activate WireGuard tunnel");
+        if (tvStatusBadge != null) {
+            if (active) {
+                tvStatusBadge.setText("ONLINE");
+                tvStatusBadge.setBackgroundColor(Color.parseColor("#102A16"));
+                tvStatusBadge.setTextColor(Color.parseColor("#00E676"));
+                tvStatusBadge.setContentDescription("Server status: Online and tunnel active");
+                if (viewStatusDot != null) viewStatusDot.setBackgroundColor(Color.parseColor("#00E676"));
+            } else {
+                tvStatusBadge.setText("PAUSED");
+                tvStatusBadge.setBackgroundColor(Color.parseColor("#201212"));
+                tvStatusBadge.setTextColor(Color.parseColor("#FF5252"));
+                tvStatusBadge.setContentDescription("Server status: Paused");
+                if (viewStatusDot != null) viewStatusDot.setBackgroundColor(Color.parseColor("#FF5252"));
+            }
         }
     }
 
     private void refreshPorts() {
         List<PortRule> rules = networkStore.getPortRules();
         if (rules.isEmpty()) {
-            tvEmptyPorts.setVisibility(View.VISIBLE);
-            rvPorts.setVisibility(View.GONE);
+            if (tvEmptyPorts != null) tvEmptyPorts.setVisibility(View.VISIBLE);
+            if (rvPorts != null) rvPorts.setVisibility(View.GONE);
         } else {
-            tvEmptyPorts.setVisibility(View.GONE);
-            rvPorts.setVisibility(View.VISIBLE);
-            portRulesAdapter.submitList(rules);
+            if (tvEmptyPorts != null) tvEmptyPorts.setVisibility(View.GONE);
+            if (rvPorts != null) {
+                rvPorts.setVisibility(View.VISIBLE);
+                portRulesAdapter.submitList(rules);
+            }
         }
+        updateFirewallUI(networkStore.isFirewallEnabled());
         refreshServerInfo();
     }
 
@@ -319,9 +392,13 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         if (config != null) {
             String addr = config.getAddress() != null ? config.getAddress() : "-";
             String ep = config.getEndpoint() != null ? config.getEndpoint() : "-";
-            tvSettingsConfSummary.setText("Tunnel IP: " + addr + "\nEndpoint: " + ep);
+            if (tvSettingsConfSummary != null) {
+                tvSettingsConfSummary.setText("Tunnel IP: " + addr + "\nEndpoint: " + ep);
+            }
         } else {
-            tvSettingsConfSummary.setText("No WireGuard .conf file imported yet.");
+            if (tvSettingsConfSummary != null) {
+                tvSettingsConfSummary.setText("No WireGuard .conf file imported yet.");
+            }
         }
     }
 
@@ -346,7 +423,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             loadCurrentState();
             Toast.makeText(this, "WireGuard configuration loaded!", Toast.LENGTH_SHORT).show();
 
-            if (switchTunnel.isChecked()) {
+            if (switchTunnel != null && switchTunnel.isChecked()) {
                 WireGuardService.restartService(this);
             }
 
@@ -384,7 +461,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 networkStore.addPortRule(rule);
                 refreshPorts();
 
-                if (switchTunnel.isChecked()) {
+                if (switchTunnel != null && switchTunnel.isChecked()) {
                     WireGuardService.restartService(this);
                 }
             })
@@ -462,7 +539,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         rule.setEnabled(enabled);
         networkStore.savePortRules(portRulesAdapter.getCurrentRules());
         refreshServerInfo();
-        if (switchTunnel.isChecked()) {
+        if (switchTunnel != null && switchTunnel.isChecked()) {
             WireGuardService.restartService(this);
         }
     }
@@ -471,7 +548,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     public void onRuleDeleted(PortRule rule) {
         networkStore.removePortRule(rule.getId());
         refreshPorts();
-        if (switchTunnel.isChecked()) {
+        if (switchTunnel != null && switchTunnel.isChecked()) {
             WireGuardService.restartService(this);
         }
     }
