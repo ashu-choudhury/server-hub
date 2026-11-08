@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#202020">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Add Open Port"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:hint="Rule Name / Label"
+        app:boxStrokeColor="#BB86FC"
+        app:hintTextColor="#BB86FC">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_rule_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="NVGT Game Server"
+            android:textColor="@android:color/white"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:hint="External Port"
+            app:boxStrokeColor="#BB86FC"
+            app:hintTextColor="#BB86FC">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_port_number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="7777"
+                android:textColor="@android:color/white"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:hint="Local Target Port"
+            app:boxStrokeColor="#BB86FC"
+            app:hintTextColor="#BB86FC">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_target_port"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="7777"
+                android:textColor="@android:color/white"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Protocol:"
+        android:textColor="#CCCCCC"
+        android:textSize="14sp"
+        android:layout_marginBottom="6dp" />
+
+    <RadioGroup
+        android:id="@+id/rg_protocol"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/rb_udp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="UDP (Game / ENet)"
+            android:checked="true"
+            android:textColor="@android:color/white" />
+
+        <RadioButton
+            android:id="@+id/rb_tcp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:text="TCP (SSH / Web)"
+            android:textColor="@android:color/white" />
+
+    </RadioGroup>
+
+</LinearLayout>

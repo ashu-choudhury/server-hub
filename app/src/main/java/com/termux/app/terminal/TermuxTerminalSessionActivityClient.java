@@ -384,8 +384,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             setCurrentSession(newTerminalSession);
 
-            mActivity.getDrawer().closeDrawers();
-        }
+                    }
     }
 
     public void setCurrentStoredSession() {
@@ -455,20 +454,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mActivity.termuxSessionListNotifyUpdated();
     }
 
-    public void checkAndScrollToSession(TerminalSession session) {
-        if (!mActivity.isVisible()) return;
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
-
-        final int indexOfSession = service.getIndexOfSession(session);
-        if (indexOfSession < 0) return;
-        final ListView termuxSessionsListView = mActivity.findViewById(R.id.terminal_sessions_list);
-        if (termuxSessionsListView == null) return;
-
-        termuxSessionsListView.setItemChecked(indexOfSession, true);
-        // Delay is necessary otherwise sometimes scroll to newly added session does not happen
-        termuxSessionsListView.postDelayed(() -> termuxSessionsListView.smoothScrollToPosition(indexOfSession), 1000);
-    }
+    public void checkAndScrollToSession(TerminalSession session) {}
 
 
     String toToastTitle(TerminalSession session) {

@@ -51,7 +51,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
-import androidx.drawerlayout.widget.DrawerLayout;
 
 public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
@@ -223,15 +222,14 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public boolean isTerminalViewSelected() {
-        return mActivity.getTerminalToolbarViewPager() == null || mActivity.isTerminalViewSelected() || mActivity.getTerminalView().hasFocus();
+        return true;
     }
 
 
 
     @Override
     public void copyModeChanged(boolean copyMode) {
-        // Disable drawer while copying.
-        mActivity.getDrawer().setDrawerLockMode(copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
+        // Drawer removed
     }
 
 
@@ -253,10 +251,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 mTermuxTerminalSessionActivityClient.switchToSession(true);
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP || unicodeChar == 'p' /* previous */) {
                 mTermuxTerminalSessionActivityClient.switchToSession(false);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                mActivity.getDrawer().openDrawer(Gravity.LEFT);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                mActivity.getDrawer().closeDrawers();
+
             } else if (unicodeChar == 'k'/* keyboard */) {
                 onToggleSoftKeyboardRequest();
             } else if (unicodeChar == 'm'/* menu */) {
@@ -615,8 +610,6 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 // Force show soft keyboard if TerminalView or toolbar text input view has
                 // focus and close it if they don't
                 boolean textInputViewHasFocus = false;
-                final EditText textInputView =  mActivity.findViewById(R.id.terminal_toolbar_text_input);
-                if (textInputView != null) textInputViewHasFocus = textInputView.hasFocus();
 
                 if (hasFocus || textInputViewHasFocus) {
                     if (mShowSoftKeyboardIgnoreOnce) {

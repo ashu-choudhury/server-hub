@@ -29,12 +29,9 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.models.ReportInfo;
 import com.termux.shared.theme.NightMode;
 
-import org.commonmark.node.FencedCodeBlock;
-import org.jetbrains.annotations.NotNull;
-
-import io.noties.markwon.Markwon;
-import io.noties.markwon.recycler.MarkwonAdapter;
-import io.noties.markwon.recycler.SimpleEntry;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
 
 /**
  * An activity to show reports in markdown format as per CommonMark spec based on config passed as {@link ReportInfo}.
@@ -156,18 +153,26 @@ public class ReportActivity extends AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
 
-        final Markwon markwon = MarkdownUtils.getRecyclerMarkwonBuilder(this);
-
-        final MarkwonAdapter adapter = MarkwonAdapter.builderTextViewIsRoot(R.layout.markdown_adapter_node_default)
-            .include(FencedCodeBlock.class, SimpleEntry.create(R.layout.markdown_adapter_node_code_block, R.id.code_text_view))
-            .build();
-
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(adapter);
-
         generateReportActivityMarkdownString();
-        adapter.setMarkdown(markwon, mReportActivityMarkdownString);
-        adapter.notifyDataSetChanged();
+        recyclerView.setAdapter(new RecyclerView.Adapter<ReportViewHolder>() {
+            @NonNull
+            @Override
+            public ReportViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                View view = getLayoutInflater().inflate(R.layout.markdown_adapter_node_default, parent, false);
+                return new ReportViewHolder(view);
+            }
+
+            @Override
+            public void onBindViewHolder(@NonNull ReportViewHolder holder, int position) {
+                ((TextView) holder.itemView).setText(mReportActivityMarkdownString);
+            }
+
+            @Override
+            public int getItemCount() {
+                return 1;
+            }
+        });
     }
 
 
@@ -388,7 +393,7 @@ public class ReportActivity extends AppCompatActivity {
 
 
 
-    @NotNull
+    @NonNull
     private static String getReportInfoDirectoryPath(Context context) {
         // Canonicalize to solve /data/data and /data/user/0 issues when comparing with reportInfoFilePath
         return FileUtils.getCanonicalPath(context.getCacheDir().getAbsolutePath(), null) + "/" + CACHE_DIR_BASENAME;
@@ -473,4 +478,10 @@ public class ReportActivity extends AppCompatActivity {
         }
     }
 
+
+    static class ReportViewHolder extends RecyclerView.ViewHolder {
+        ReportViewHolder(View itemView) {
+            super(itemView);
+        }
+    }
 }

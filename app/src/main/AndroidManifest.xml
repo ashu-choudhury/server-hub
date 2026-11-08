@@ -50,28 +50,25 @@
         tools:targetApi="m">
 
         <activity
+            android:name=".app.serverhub.ServerHubActivity"
+            android:exported="true"
+            android:label="Game Server Hub"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".app.TermuxActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
-            android:label="@string/application_name"
+            android:label="Server Terminal"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
             tools:targetApi="n">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
         </activity>
 
         <activity-alias
@@ -87,20 +84,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
-
-        <activity
-            android:name=".app.activities.HelpActivity"
-            android:exported="false"
-            android:label="@string/application_name"
-            android:parentActivityName=".app.TermuxActivity"
-            android:resizeableActivity="true"
-            tools:targetApi="n" />
-
-        <activity
-            android:name=".app.activities.SettingsActivity"
-            android:exported="true"
-            android:label="@string/title_activity_termux_settings"
-            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar" />
 
         <activity
             android:name=".shared.activities.ReportActivity"
