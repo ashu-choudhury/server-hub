@@ -59,6 +59,18 @@ func CreateIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 	return setting, nil
 }
 
+// AndroidStdBind wraps conn.StdNetBind to bypass sticky Linux netlink socket creation.
+// On Android, standard non-root apps are restricted by SELinux from opening AF_NETLINK raw sockets,
+// which causes conn.NewDefaultBind() / conn.LinuxSocketBind to fail with EACCES ("permission denied").
+// Wrapping StdNetBind ensures standard userspace UDP sockets are used without triggering netlink route listeners.
+type AndroidStdBind struct {
+	conn.Bind
+}
+
+func newAndroidBind() conn.Bind {
+	return &AndroidStdBind{Bind: conn.NewStdNetBind()}
+}
+
 // StartWireguard creates a tun interface on netstack given a configuration
 func StartWireguard(conf *Configuration, logLevel int) (*VirtualTun, error) {
 	deviceConf := conf.Device
@@ -71,7 +83,7 @@ func StartWireguard(conf *Configuration, logLevel int) (*VirtualTun, error) {
 	if err != nil {
 		return nil, err
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(logLevel, ""))
+	dev := device.NewDevice(tun, newAndroidBind(), device.NewLogger(logLevel, ""))
 	err = dev.IpcSet(setting.IpcRequest)
 	if err != nil {
 		return nil, err
