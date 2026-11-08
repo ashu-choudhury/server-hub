@@ -41,12 +41,13 @@ public class ServerManager {
 
     @NonNull
     public static String getUsername() {
-        String name = System.getProperty("user.name");
-        if (name != null && !name.trim().isEmpty()) {
-            return name.trim();
-        }
         int uid = android.os.Process.myUid();
-        return "u0_a" + (uid - 10000);
+        int appId = uid % 100000;
+        int userId = uid / 100000;
+        if (userId > 0) {
+            return "u" + userId + "_a" + (appId - 10000);
+        }
+        return "u0_a" + (appId - 10000);
     }
 
     public static boolean isBootstrapExtracted() {
@@ -161,9 +162,9 @@ public class ServerManager {
             String cmd = "export PREFIX=" + prefix + "; " +
                          "export PATH=" + prefix + "/bin:$PATH; " +
                          "printf \"%s\\n%s\\n\" \"" + escapedPass + "\" \"" + escapedPass + "\" | " + prefix + "/bin/passwd 2>/dev/null; " +
-                         "ssh-keygen -A 2>/dev/null; " +
+                         prefix + "/bin/ssh-keygen -A 2>/dev/null; " +
                          "pkill sshd 2>/dev/null; " +
-                         "$PREFIX/bin/sshd";
+                         prefix + "/bin/sshd";
 
             executeCommand(cmd, null, new CommandListener() {
                 @Override
@@ -197,10 +198,22 @@ public class ServerManager {
         String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
         String cmd = "export PREFIX=" + prefix + "; " +
                      "export PATH=" + prefix + "/bin:$PATH; " +
-                     "ssh-keygen -A 2>/dev/null; " +
+                     prefix + "/bin/ssh-keygen -A 2>/dev/null; " +
                      "pkill sshd 2>/dev/null; " +
-                     "$PREFIX/bin/sshd";
+                     prefix + "/bin/sshd";
 
         executeCommand(cmd, null, listener);
+    }
+
+    public static void ensureSSHDRunning(@Nullable CommandListener listener) {
+        new Thread(() -> {
+            if (isSSHDRunning()) {
+                if (listener != null) {
+                    MAIN_HANDLER.post(() -> listener.onComplete(0));
+                }
+                return;
+            }
+            restartSSHD(listener);
+        }).start();
     }
 }

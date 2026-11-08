@@ -113,6 +113,9 @@ public class WireGuardService extends Service {
 
         acquireWakeLock();
 
+        // Ensure internal OpenSSH server is running so port 2222 forwards work
+        ServerManager.ensureSSHDRunning(null);
+
         WireGuardConfig config = networkStore.getConfig();
         String address = (config != null && !config.getAddress().isEmpty()) ? config.getAddress() : "Active";
         startForeground(NOTIFICATION_ID, buildNotification("WireGuard Tunnel Active", "IPv6: " + address));
@@ -201,14 +204,34 @@ public class WireGuardService extends Service {
     private void appendLog(String line) {
         if (line == null) return;
         android.util.Log.i(LOG_TAG, line);
+
+        // Filter internal crypto worker & keepalive noise from UI view
+        if (line.contains("Routine:") || line.contains("keepalive") || line.contains("UAPI:")) {
+            return;
+        }
+
+        String userLine = line;
+        if (line.contains("Received handshake response")) {
+            userLine = "[SUCCESS] Handshake verified with tunnel broker! Tunnel is active.";
+        } else if (line.contains("Sending handshake initiation")) {
+            userLine = "[INFO] Sending WireGuard handshake to tunnel broker...";
+        } else if (line.contains("TCPServerTunnel listening")) {
+            userLine = "[PORT] " + line.substring(line.indexOf("TCPServerTunnel"));
+        } else if (line.contains("UDPServerTunnel listening")) {
+            userLine = "[PORT] " + line.substring(line.indexOf("UDPServerTunnel"));
+        } else if (line.contains("connection refused")) {
+            userLine = "[WARN] Connection refused to internal port. Ensuring OpenSSH is active...";
+            ServerManager.restartSSHD(null);
+        }
+
         synchronized (recentLogs) {
             if (recentLogs.size() >= MAX_LOG_LINES) {
                 recentLogs.remove(0);
             }
-            recentLogs.add(line);
+            recentLogs.add(userLine);
         }
         Intent intent = new Intent(ACTION_LOG_UPDATE);
-        intent.putExtra(EXTRA_LOG_LINE, line);
+        intent.putExtra(EXTRA_LOG_LINE, userLine);
         sendBroadcast(intent);
 
         if (line.contains("Received handshake response") || line.contains("UDPServerTunnel listening") || line.contains("TCPServerTunnel listening")) {

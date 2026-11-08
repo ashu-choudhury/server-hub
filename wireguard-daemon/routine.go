@@ -322,6 +322,7 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("TCPServerTunnel listening on WireGuard port %d, forwarding to %s", conf.ListenPort, conf.Target)
 
 	for {
 		conn, err := server.Accept()

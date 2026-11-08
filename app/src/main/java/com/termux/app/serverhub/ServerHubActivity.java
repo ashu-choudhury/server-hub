@@ -109,6 +109,29 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         }
         syncTunnelState();
         refreshServerInfo();
+
+        if (tvLogs != null && tvLogs.getText().toString().isEmpty()) {
+            List<String> logs = WireGuardService.getRecentLogs();
+            for (String l : logs) {
+                tvLogs.append(l + "\n");
+            }
+            if (scrollLogs != null) {
+                scrollLogs.post(() -> scrollLogs.fullScroll(View.FOCUS_DOWN));
+            }
+        }
+
+        ServerManager.ensureSSHDRunning(new ServerManager.CommandListener() {
+            @Override
+            public void onOutput(@NonNull String line) {
+                runOnUiThread(() -> {
+                    if (tvLogs != null) tvLogs.append(line + "\n");
+                });
+            }
+            @Override
+            public void onComplete(int exitCode) {
+                runOnUiThread(() -> refreshServerInfo());
+            }
+        });
     }
 
     @Override
@@ -256,6 +279,10 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
     private void syncTunnelState() {
         boolean active = WireGuardService.isServiceRunning();
+        if (!active && networkStore.isTunnelActive() && networkStore.getConfig() != null) {
+            WireGuardService.startService(this);
+            active = true;
+        }
         switchTunnel.setChecked(active);
         updateBadge(active);
     }

@@ -241,6 +241,7 @@ public class SetupActivity extends AppCompatActivity {
         if (SetupPreferences.isPasswordConfigured(this) || ServerManager.isSSHDRunning()) {
             tvPage1Status.setText("✓ SSH Password configured and OpenSSH service active.");
             btnPage1Next.setEnabled(true);
+            ServerManager.ensureSSHDRunning(null);
         }
 
         WireGuardConfig savedConfig = networkStore.getConfig();
