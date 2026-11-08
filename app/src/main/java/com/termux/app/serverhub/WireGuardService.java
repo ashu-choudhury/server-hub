@@ -50,6 +50,23 @@ public class WireGuardService extends Service {
         return isRunning;
     }
 
+    public static boolean isServiceRunning() {
+        return isRunning;
+    }
+
+    public static void startService(@NonNull Context context) {
+        start(context);
+    }
+
+    public static void stopService(@NonNull Context context) {
+        stop(context);
+    }
+
+    public static void restartService(@NonNull Context context) {
+        stop(context);
+        start(context);
+    }
+
     public static List<String> getRecentLogs() {
         synchronized (recentLogs) {
             return new ArrayList<>(recentLogs);

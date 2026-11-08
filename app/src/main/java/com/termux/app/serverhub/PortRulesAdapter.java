@@ -38,6 +38,14 @@ public class PortRulesAdapter extends RecyclerView.Adapter<PortRulesAdapter.Port
         notifyDataSetChanged();
     }
 
+    public void submitList(List<PortRule> newRules) {
+        setRules(newRules);
+    }
+
+    public List<PortRule> getCurrentRules() {
+        return new ArrayList<>(rules);
+    }
+
     @NonNull
     @Override
     public PortRuleViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

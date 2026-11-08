@@ -66,6 +66,14 @@ public class PortRule implements Serializable {
         return port;
     }
 
+    public int getListenPort() {
+        return port;
+    }
+
+    public int getDestinationPort() {
+        return targetPort;
+    }
+
     public void setPort(int port) {
         this.port = port;
     }

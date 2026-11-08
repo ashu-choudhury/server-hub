@@ -50,15 +50,21 @@
         tools:targetApi="m">
 
         <activity
-            android:name=".app.serverhub.ServerHubActivity"
+            android:name=".app.serverhub.SetupActivity"
             android:exported="true"
-            android:label="Game Server Hub"
+            android:label="Server Setup"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".app.serverhub.ServerHubActivity"
+            android:exported="false"
+            android:label="Server Game Hub"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <service
             android:name=".app.serverhub.WireGuardService"

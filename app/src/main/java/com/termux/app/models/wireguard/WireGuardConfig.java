@@ -58,6 +58,15 @@ public class WireGuardConfig implements Serializable {
         return peerEndpoint;
     }
 
+    public String getEndpoint() {
+        return peerEndpoint;
+    }
+
+    @NonNull
+    public static WireGuardConfig parse(@NonNull String confText) {
+        return parseFromConfString(confText);
+    }
+
     public void setPeerEndpoint(String peerEndpoint) {
         this.peerEndpoint = peerEndpoint;
     }
