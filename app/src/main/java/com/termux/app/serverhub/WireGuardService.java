@@ -37,6 +37,7 @@ public class WireGuardService extends Service {
     public static final String ACTION_STOP = "com.termux.app.wireguard.STOP";
     public static final String ACTION_LOG_UPDATE = "com.termux.app.wireguard.LOG_UPDATE";
     public static final String EXTRA_LOG_LINE = "log_line";
+    public static final String ACTION_HANDSHAKE_OK = "com.termux.app.wireguard.HANDSHAKE_OK";
 
     private static volatile boolean isRunning = false;
     private static final List<String> recentLogs = Collections.synchronizedList(new ArrayList<>());
@@ -199,6 +200,7 @@ public class WireGuardService extends Service {
 
     private void appendLog(String line) {
         if (line == null) return;
+        android.util.Log.i(LOG_TAG, line);
         synchronized (recentLogs) {
             if (recentLogs.size() >= MAX_LOG_LINES) {
                 recentLogs.remove(0);
@@ -208,6 +210,11 @@ public class WireGuardService extends Service {
         Intent intent = new Intent(ACTION_LOG_UPDATE);
         intent.putExtra(EXTRA_LOG_LINE, line);
         sendBroadcast(intent);
+
+        if (line.contains("Received handshake response") || line.contains("UDPServerTunnel listening") || line.contains("TCPServerTunnel listening")) {
+            Intent okIntent = new Intent(ACTION_HANDSHAKE_OK);
+            sendBroadcast(okIntent);
+        }
     }
 
     private void acquireWakeLock() {

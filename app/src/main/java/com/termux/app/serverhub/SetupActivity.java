@@ -11,9 +11,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -22,7 +22,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.termux.R;
 import com.termux.app.TermuxInstaller;
@@ -33,43 +32,50 @@ import com.termux.app.models.wireguard.WireGuardNetworkStore;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.List;
 
 public class SetupActivity extends AppCompatActivity {
 
     public static final String EXTRA_FORCE_SETUP = "force_setup";
 
-    // Step 1 Views
-    private TextView tvStep1Badge;
-    private ProgressBar progressStep1;
-    private MaterialButton btnStep1Install;
-    private ScrollView scrollStep1Logs;
-    private TextView tvStep1Logs;
+    // Header Indicators
+    private TextView tvStepIndicator;
+    private TextView tvOverallPercentage;
+    private ProgressBar progressOverall;
+    private ViewFlipper viewFlipper;
 
-    // Step 2 Views
-    private MaterialCardView cardStep2;
-    private TextView tvStep2Badge;
-    private TextView tvStep2UserInfo;
-    private TextInputEditText etSshPassword;
-    private TextInputEditText etSshPasswordConfirm;
-    private MaterialButton btnStep2SetPassword;
+    // Page 0: Environment
+    private TextView tvStep1Percent;
+    private ProgressBar progressStep1Bar;
+    private TextView tvStep1StatusMsg;
+    private MaterialButton btnStep1Start;
+    private MaterialButton btnPage0Next;
 
-    // Step 3 Views
-    private MaterialCardView cardStep3;
-    private TextView tvStep3Badge;
-    private MaterialButton btnStep3ImportConf;
-    private LinearLayout layoutStep3Info;
-    private TextView tvStep3Address;
-    private TextView tvStep3Endpoint;
-    private MaterialButton btnStep3TestConnect;
+    // Page 1: SSH Credentials
+    private TextView tvPage1UserInfo;
+    private TextInputEditText etPage1Password;
+    private TextInputEditText etPage1Confirm;
+    private MaterialButton btnPage1Apply;
+    private TextView tvPage1Status;
+    private MaterialButton btnPage1Back;
+    private MaterialButton btnPage1Next;
 
-    // Step 4 Views
-    private MaterialCardView cardStep4Complete;
-    private TextView tvSummaryUsername;
-    private TextView tvSummaryIpv6;
-    private TextView tvSummarySshCommand;
-    private MaterialButton btnGoToHub;
+    // Page 2: WireGuard Tunnel
+    private MaterialButton btnPage2SelectConf;
+    private LinearLayout layoutPage2ConfInfo;
+    private TextView tvPage2Address;
+    private TextView tvPage2Endpoint;
+    private MaterialButton btnPage2Connect;
+    private TextView tvPage2Status;
+    private MaterialButton btnPage2Back;
+    private MaterialButton btnPage2Next;
+
+    // Page 3: Summary
+    private TextView tvPage3User;
+    private TextView tvPage3Ipv6;
+    private TextView tvPage3SshCmd;
+    private MaterialButton btnPage3Finish;
+    private MaterialButton btnPage3Back;
 
     private WireGuardNetworkStore networkStore;
     private WireGuardConfig pendingConfig;
@@ -77,12 +83,16 @@ public class SetupActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
 
-    private final BroadcastReceiver wireguardLogReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver wireguardReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent != null && WireGuardService.ACTION_LOG_UPDATE.equals(intent.getAction())) {
+            if (intent == null) return;
+            String action = intent.getAction();
+            if (WireGuardService.ACTION_HANDSHAKE_OK.equals(action)) {
+                onWireGuardConnected();
+            } else if (WireGuardService.ACTION_LOG_UPDATE.equals(action)) {
                 String line = intent.getStringExtra(WireGuardService.EXTRA_LOG_LINE);
-                if (line != null && line.contains("WireGuard userspace process started")) {
+                if (line != null && (line.contains("Received handshake response") || line.contains("now Up") || line.contains("UDPServerTunnel listening"))) {
                     onWireGuardConnected();
                 }
             }
@@ -110,11 +120,13 @@ public class SetupActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        IntentFilter filter = new IntentFilter(WireGuardService.ACTION_LOG_UPDATE);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WireGuardService.ACTION_LOG_UPDATE);
+        filter.addAction(WireGuardService.ACTION_HANDSHAKE_OK);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(wireguardLogReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(wireguardReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(wireguardLogReceiver, filter);
+            registerReceiver(wireguardReceiver, filter);
         }
     }
 
@@ -122,163 +134,192 @@ public class SetupActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         try {
-            unregisterReceiver(wireguardLogReceiver);
+            unregisterReceiver(wireguardReceiver);
         } catch (Exception ignored) {}
     }
 
     private void initViews() {
-        tvStep1Badge = findViewById(R.id.tv_step1_badge);
-        progressStep1 = findViewById(R.id.progress_step1);
-        btnStep1Install = findViewById(R.id.btn_step1_install);
-        scrollStep1Logs = findViewById(R.id.scroll_step1_logs);
-        tvStep1Logs = findViewById(R.id.tv_step1_logs);
+        // Persistent Header
+        tvStepIndicator = findViewById(R.id.tv_step_indicator);
+        tvOverallPercentage = findViewById(R.id.tv_overall_percentage);
+        progressOverall = findViewById(R.id.progress_overall);
+        viewFlipper = findViewById(R.id.view_flipper_setup);
+        viewFlipper.setInAnimation(this, android.R.anim.fade_in);
+        viewFlipper.setOutAnimation(this, android.R.anim.fade_out);
 
-        cardStep2 = findViewById(R.id.card_step2);
-        tvStep2Badge = findViewById(R.id.tv_step2_badge);
-        tvStep2UserInfo = findViewById(R.id.tv_step2_user_info);
-        etSshPassword = findViewById(R.id.et_ssh_password);
-        etSshPasswordConfirm = findViewById(R.id.et_ssh_password_confirm);
-        btnStep2SetPassword = findViewById(R.id.btn_step2_set_password);
+        // Page 0
+        tvStep1Percent = findViewById(R.id.tv_step1_percent);
+        progressStep1Bar = findViewById(R.id.progress_step1_bar);
+        tvStep1StatusMsg = findViewById(R.id.tv_step1_status_msg);
+        btnStep1Start = findViewById(R.id.btn_step1_start);
+        btnPage0Next = findViewById(R.id.btn_page0_next);
 
-        cardStep3 = findViewById(R.id.card_step3);
-        tvStep3Badge = findViewById(R.id.tv_step3_badge);
-        btnStep3ImportConf = findViewById(R.id.btn_step3_import_conf);
-        layoutStep3Info = findViewById(R.id.layout_step3_info);
-        tvStep3Address = findViewById(R.id.tv_step3_address);
-        tvStep3Endpoint = findViewById(R.id.tv_step3_endpoint);
-        btnStep3TestConnect = findViewById(R.id.btn_step3_test_connect);
+        // Page 1
+        tvPage1UserInfo = findViewById(R.id.tv_page1_user_info);
+        etPage1Password = findViewById(R.id.et_page1_password);
+        etPage1Confirm = findViewById(R.id.et_page1_confirm);
+        btnPage1Apply = findViewById(R.id.btn_page1_apply);
+        tvPage1Status = findViewById(R.id.tv_page1_status);
+        btnPage1Back = findViewById(R.id.btn_page1_back);
+        btnPage1Next = findViewById(R.id.btn_page1_next);
 
-        cardStep4Complete = findViewById(R.id.card_step4_complete);
-        tvSummaryUsername = findViewById(R.id.tv_summary_username);
-        tvSummaryIpv6 = findViewById(R.id.tv_summary_ipv6);
-        tvSummarySshCommand = findViewById(R.id.tv_summary_ssh_command);
-        btnGoToHub = findViewById(R.id.btn_go_to_hub);
+        // Page 2
+        btnPage2SelectConf = findViewById(R.id.btn_page2_select_conf);
+        layoutPage2ConfInfo = findViewById(R.id.layout_page2_conf_info);
+        tvPage2Address = findViewById(R.id.tv_page2_address);
+        tvPage2Endpoint = findViewById(R.id.tv_page2_endpoint);
+        btnPage2Connect = findViewById(R.id.btn_page2_connect);
+        tvPage2Status = findViewById(R.id.tv_page2_status);
+        btnPage2Back = findViewById(R.id.btn_page2_back);
+        btnPage2Next = findViewById(R.id.btn_page2_next);
 
-        String username = ServerManager.getUsername();
-        tvStep2UserInfo.setText("SSH User: " + username + " | Internal Port: 8022");
+        // Page 3
+        tvPage3User = findViewById(R.id.tv_page3_user);
+        tvPage3Ipv6 = findViewById(R.id.tv_page3_ipv6);
+        tvPage3SshCmd = findViewById(R.id.tv_page3_ssh_cmd);
+        btnPage3Finish = findViewById(R.id.btn_page3_finish);
+        btnPage3Back = findViewById(R.id.btn_page3_back);
 
-        btnStep1Install.setOnClickListener(v -> startStep1Installation());
-        btnStep2SetPassword.setOnClickListener(v -> startStep2SetPassword());
-        btnStep3ImportConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
-        btnStep3TestConnect.setOnClickListener(v -> startStep3TestConnection());
-        btnGoToHub.setOnClickListener(v -> {
+        // Listeners - Navigation
+        btnPage0Next.setOnClickListener(v -> goToPage(1));
+        btnPage1Back.setOnClickListener(v -> goToPage(0));
+        btnPage1Next.setOnClickListener(v -> goToPage(2));
+        btnPage2Back.setOnClickListener(v -> goToPage(1));
+        btnPage2Next.setOnClickListener(v -> goToPage(3));
+        btnPage3Back.setOnClickListener(v -> goToPage(2));
+
+        btnStep1Start.setOnClickListener(v -> startInstallationProcess());
+        btnPage1Apply.setOnClickListener(v -> applySSHPassword());
+        btnPage2SelectConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
+        btnPage2Connect.setOnClickListener(v -> startWireGuardConnection());
+
+        btnPage3Finish.setOnClickListener(v -> {
             SetupPreferences.setSetupCompleted(this, true);
             startActivity(new Intent(this, ServerHubActivity.class));
             finish();
         });
+
+        String username = ServerManager.getUsername();
+        tvPage1UserInfo.setText("Linux User: " + username + " | Default SSH Port: 8022");
+    }
+
+    private void goToPage(int pageIndex) {
+        viewFlipper.setDisplayedChild(pageIndex);
+        switch (pageIndex) {
+            case 0:
+                tvStepIndicator.setText("Step 1 of 4: Environment");
+                tvOverallPercentage.setText("25%");
+                progressOverall.setProgress(25);
+                break;
+            case 1:
+                tvStepIndicator.setText("Step 2 of 4: SSH Credentials");
+                tvOverallPercentage.setText("50%");
+                progressOverall.setProgress(50);
+                break;
+            case 2:
+                tvStepIndicator.setText("Step 3 of 4: WireGuard Tunnel");
+                tvOverallPercentage.setText("75%");
+                progressOverall.setProgress(75);
+                break;
+            case 3:
+                tvStepIndicator.setText("Step 4 of 4: All Set!");
+                tvOverallPercentage.setText("100%");
+                progressOverall.setProgress(100);
+                updateSummaryDetails();
+                break;
+        }
     }
 
     private void checkInitialStatus() {
-        boolean opensshReady = ServerManager.isOpenSSHInstalled();
-        boolean bootstrapReady = ServerManager.isBootstrapExtracted();
-
-        if (bootstrapReady && opensshReady) {
-            markStep1Done();
-            unlockStep2();
-        } else {
-            lockStep2();
-            lockStep3();
+        if (ServerManager.isBootstrapExtracted() && ServerManager.isOpenSSHInstalled()) {
+            setStep1Progress(100, "✓ Sandbox Environment & OpenSSH Installed");
+            btnStep1Start.setEnabled(false);
+            btnStep1Start.setText("✓ Already Installed");
+            btnPage0Next.setEnabled(true);
         }
 
         if (SetupPreferences.isPasswordConfigured(this) || ServerManager.isSSHDRunning()) {
-            markStep2Done();
-            unlockStep3();
+            tvPage1Status.setText("✓ SSH Password configured and OpenSSH service active.");
+            btnPage1Next.setEnabled(true);
         }
 
         WireGuardConfig savedConfig = networkStore.getConfig();
         if (savedConfig != null) {
-            displayStep3Config(savedConfig);
+            displayPage2Config(savedConfig);
         }
     }
 
-    private void startStep1Installation() {
-        btnStep1Install.setEnabled(false);
-        progressStep1.setVisibility(View.VISIBLE);
-        scrollStep1Logs.setVisibility(View.VISIBLE);
-        tvStep1Logs.setText("[SETUP] Preparing sandbox environment...\n");
-        tvStep1Badge.setText("RUNNING");
-        tvStep1Badge.setTextColor(Color.parseColor("#80D8FF"));
+    private void setStep1Progress(int percent, String message) {
+        tvStep1Percent.setText(percent + "%");
+        progressStep1Bar.setProgress(percent);
+        tvStep1StatusMsg.setText(message);
+    }
+
+    private void startInstallationProcess() {
+        btnStep1Start.setEnabled(false);
+        btnStep1Start.setText("Installing Environment...");
+        setStep1Progress(15, "Checking sandbox components...");
 
         if (!ServerManager.isBootstrapExtracted()) {
-            tvStep1Logs.append("[BOOTSTRAP] Extracting core Termux system packages...\n");
+            setStep1Progress(30, "Extracting core sandbox packages...");
             TermuxInstaller.setupBootstrapIfNeeded(this, () -> {
                 runOnUiThread(() -> {
-                    tvStep1Logs.append("[BOOTSTRAP] Core system ready. Installing OpenSSH...\n");
-                    runPackageInstall();
+                    setStep1Progress(60, "Installing OpenSSH server & networking tools...");
+                    runPackageInstallation();
                 });
             });
         } else {
-            runPackageInstall();
+            setStep1Progress(50, "Installing OpenSSH server & networking tools...");
+            runPackageInstallation();
         }
     }
 
-    private void runPackageInstall() {
+    private void runPackageInstallation() {
         ServerManager.installRequiredPackages(new ServerManager.CommandListener() {
             @Override
             public void onOutput(@NonNull String line) {
-                tvStep1Logs.append(line + "\n");
-                scrollStep1Logs.post(() -> scrollStep1Logs.fullScroll(View.FOCUS_DOWN));
+                if (line.contains("Unpacking") || line.contains("Setting up")) {
+                    setStep1Progress(80, "Setting up packages...");
+                }
             }
 
             @Override
             public void onComplete(int exitCode) {
-                progressStep1.setVisibility(View.GONE);
                 if (exitCode == 0 || ServerManager.isOpenSSHInstalled()) {
-                    tvStep1Logs.append("[SUCCESS] Environment and OpenSSH server installed successfully!\n");
-                    markStep1Done();
-                    unlockStep2();
-                    Toast.makeText(SetupActivity.this, "Step 1 Completed!", Toast.LENGTH_SHORT).show();
+                    setStep1Progress(100, "✓ Environment & OpenSSH Ready!");
+                    btnStep1Start.setEnabled(false);
+                    btnStep1Start.setText("✓ Installation Complete");
+                    btnPage0Next.setEnabled(true);
+                    Toast.makeText(SetupActivity.this, "Step 1 completed! Tap Next.", Toast.LENGTH_SHORT).show();
                 } else {
-                    btnStep1Install.setEnabled(true);
-                    tvStep1Badge.setText("FAILED");
-                    tvStep1Badge.setTextColor(Color.parseColor("#FF5252"));
-                    tvStep1Logs.append("[ERROR] Package installation exited with code " + exitCode + ".\n");
+                    btnStep1Start.setEnabled(true);
+                    btnStep1Start.setText("Retry Installation");
+                    setStep1Progress(0, "Installation failed. Tap Retry.");
                 }
             }
         });
     }
 
-    private void markStep1Done() {
-        tvStep1Badge.setText("✓ READY");
-        tvStep1Badge.setTextColor(Color.parseColor("#00E676"));
-        btnStep1Install.setEnabled(false);
-        btnStep1Install.setText("✓ Environment & Packages Ready");
-        btnStep1Install.setBackgroundColor(Color.parseColor("#2E7D32"));
-    }
-
-    private void unlockStep2() {
-        cardStep2.setAlpha(1.0f);
-        tvStep2Badge.setText("READY");
-        tvStep2Badge.setTextColor(Color.parseColor("#FFB74D"));
-        btnStep2SetPassword.setEnabled(true);
-    }
-
-    private void lockStep2() {
-        cardStep2.setAlpha(0.5f);
-        tvStep2Badge.setText("LOCKED");
-        tvStep2Badge.setTextColor(Color.parseColor("#777777"));
-        btnStep2SetPassword.setEnabled(false);
-    }
-
-    private void startStep2SetPassword() {
-        String pass = etSshPassword.getText() != null ? etSshPassword.getText().toString().trim() : "";
-        String confirm = etSshPasswordConfirm.getText() != null ? etSshPasswordConfirm.getText().toString().trim() : "";
+    private void applySSHPassword() {
+        String pass = etPage1Password.getText() != null ? etPage1Password.getText().toString().trim() : "";
+        String confirm = etPage1Confirm.getText() != null ? etPage1Confirm.getText().toString().trim() : "";
 
         if (pass.isEmpty()) {
-            etSshPassword.setError("Password cannot be empty");
+            etPage1Password.setError("Password cannot be empty");
             return;
         }
         if (pass.length() < 4) {
-            etSshPassword.setError("Password must be at least 4 characters");
+            etPage1Password.setError("Password must be at least 4 characters");
             return;
         }
         if (!pass.equals(confirm)) {
-            etSshPasswordConfirm.setError("Passwords do not match");
+            etPage1Confirm.setError("Passwords do not match");
             return;
         }
 
-        btnStep2SetPassword.setEnabled(false);
-        btnStep2SetPassword.setText("Applying Password...");
+        btnPage1Apply.setEnabled(false);
+        btnPage1Apply.setText("Applying Password...");
+        tvPage1Status.setText("Starting OpenSSH daemon with your password...");
 
         ServerManager.setSSHPassword(pass, new ServerManager.CommandListener() {
             @Override
@@ -287,33 +328,13 @@ public class SetupActivity extends AppCompatActivity {
             @Override
             public void onComplete(int exitCode) {
                 SetupPreferences.setPasswordConfigured(SetupActivity.this, true);
-                markStep2Done();
-                unlockStep3();
-                Toast.makeText(SetupActivity.this, "SSH Password configured successfully!", Toast.LENGTH_SHORT).show();
+                btnPage1Apply.setEnabled(true);
+                btnPage1Apply.setText("✓ Password Saved");
+                tvPage1Status.setText("✓ SSH Server running on port 8022.");
+                btnPage1Next.setEnabled(true);
+                Toast.makeText(SetupActivity.this, "SSH password saved! Tap Next.", Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void markStep2Done() {
-        tvStep2Badge.setText("✓ READY");
-        tvStep2Badge.setTextColor(Color.parseColor("#00E676"));
-        btnStep2SetPassword.setEnabled(false);
-        btnStep2SetPassword.setText("✓ SSH Password Set & Server Running");
-        btnStep2SetPassword.setBackgroundColor(Color.parseColor("#2E7D32"));
-    }
-
-    private void unlockStep3() {
-        cardStep3.setAlpha(1.0f);
-        tvStep3Badge.setText("PENDING");
-        tvStep3Badge.setTextColor(Color.parseColor("#FFB74D"));
-        btnStep3ImportConf.setEnabled(true);
-    }
-
-    private void lockStep3() {
-        cardStep3.setAlpha(0.5f);
-        tvStep3Badge.setText("LOCKED");
-        tvStep3Badge.setTextColor(Color.parseColor("#777777"));
-        btnStep3ImportConf.setEnabled(false);
     }
 
     private void onConfFileSelected(@Nullable Uri uri) {
@@ -334,21 +355,24 @@ public class SetupActivity extends AppCompatActivity {
             }
 
             pendingConfig = config;
-            displayStep3Config(config);
+            displayPage2Config(config);
 
         } catch (Exception e) {
-            Toast.makeText(this, "Failed to read .conf: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Failed to read .conf file: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
-    private void displayStep3Config(@NonNull WireGuardConfig config) {
-        layoutStep3Info.setVisibility(View.VISIBLE);
-        tvStep3Address.setText("IPv6 Address: " + (config.getAddress() != null ? config.getAddress() : "-"));
-        tvStep3Endpoint.setText("Endpoint: " + (config.getEndpoint() != null ? config.getEndpoint() : "-"));
-        btnStep3TestConnect.setVisibility(View.VISIBLE);
+    private void displayPage2Config(@NonNull WireGuardConfig config) {
+        layoutPage2ConfInfo.setVisibility(View.VISIBLE);
+        tvPage2Address.setText("Public IPv6: " + (config.getAddress() != null ? config.getAddress() : "-"));
+        tvPage2Endpoint.setText("Endpoint: " + (config.getEndpoint() != null ? config.getEndpoint() : "-"));
+        btnPage2Connect.setVisibility(View.VISIBLE);
+        btnPage2Connect.setEnabled(true);
+        btnPage2Connect.setText("Connect & Test Tunnel");
+        tvPage2Status.setText("");
     }
 
-    private void startStep3TestConnection() {
+    private void startWireGuardConnection() {
         if (pendingConfig == null) {
             pendingConfig = networkStore.getConfig();
         }
@@ -357,10 +381,10 @@ public class SetupActivity extends AppCompatActivity {
             return;
         }
 
-        btnStep3TestConnect.setEnabled(false);
-        btnStep3TestConnect.setText("Testing Connection...");
-        tvStep3Badge.setText("CONNECTING");
-        tvStep3Badge.setTextColor(Color.parseColor("#80D8FF"));
+        btnPage2Connect.setEnabled(false);
+        btnPage2Connect.setText("Connecting to Tunnel...");
+        tvPage2Status.setText("Starting WireGuard userspace engine and sending handshake...");
+        tvPage2Status.setTextColor(Color.parseColor("#80D8FF"));
 
         // Save config
         networkStore.saveConfig(pendingConfig);
@@ -384,41 +408,36 @@ public class SetupActivity extends AppCompatActivity {
         // Start WireGuard service
         WireGuardService.startService(this);
 
-        // Verify connection within 2 seconds
-        btnStep3TestConnect.postDelayed(() -> {
+        // Verification safety timeout
+        btnPage2Connect.postDelayed(() -> {
             if (WireGuardService.isServiceRunning()) {
                 onWireGuardConnected();
             } else {
-                btnStep3TestConnect.setEnabled(true);
-                btnStep3TestConnect.setText("Retry WireGuard Connection");
-                tvStep3Badge.setText("FAILED");
-                tvStep3Badge.setTextColor(Color.parseColor("#FF5252"));
-                Toast.makeText(this, "WireGuard failed to start. Check your .conf keys.", Toast.LENGTH_LONG).show();
+                btnPage2Connect.setEnabled(true);
+                btnPage2Connect.setText("Retry Connection");
+                tvPage2Status.setText("WireGuard failed to start. Check your .conf keys.");
+                tvPage2Status.setTextColor(Color.parseColor("#FF5252"));
             }
-        }, 2500);
+        }, 3000);
     }
 
     private void onWireGuardConnected() {
-        tvStep3Badge.setText("✓ CONNECTED");
-        tvStep3Badge.setTextColor(Color.parseColor("#00E676"));
-        btnStep3TestConnect.setEnabled(false);
-        btnStep3TestConnect.setText("✓ WireGuard Tunnel Active");
-        btnStep3TestConnect.setBackgroundColor(Color.parseColor("#2E7D32"));
-
-        showCompletionSummary();
+        btnPage2Connect.setEnabled(false);
+        btnPage2Connect.setText("✓ WireGuard Connected");
+        btnPage2Connect.setBackgroundColor(Color.parseColor("#2E7D32"));
+        tvPage2Status.setText("✓ Tunnel established with broker! Public IPv6 is active.");
+        tvPage2Status.setTextColor(Color.parseColor("#00E676"));
+        btnPage2Next.setEnabled(true);
     }
 
-    private void showCompletionSummary() {
-        cardStep4Complete.setVisibility(View.VISIBLE);
-
+    private void updateSummaryDetails() {
         String username = ServerManager.getUsername();
-        String ipv6 = (pendingConfig != null && pendingConfig.getAddress() != null) ?
-                pendingConfig.getAddress().replaceAll("/.*", "") : "::1";
+        WireGuardConfig config = pendingConfig != null ? pendingConfig : networkStore.getConfig();
+        String ipv6 = (config != null && config.getAddress() != null) ?
+                config.getAddress().replaceAll("/.*", "") : "::1";
 
-        tvSummaryUsername.setText("Username: " + username);
-        tvSummaryIpv6.setText("Public IPv6: " + ipv6);
-        tvSummarySshCommand.setText("SSH Command: ssh " + username + "@" + ipv6 + " -p 2222");
-
-        cardStep4Complete.getParent().requestChildFocus(cardStep4Complete, cardStep4Complete);
+        tvPage3User.setText("Username: " + username);
+        tvPage3Ipv6.setText("Public IPv6: " + ipv6);
+        tvPage3SshCmd.setText("SSH Command: ssh " + username + "@" + ipv6 + " -p 2222");
     }
 }
