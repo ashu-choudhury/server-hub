@@ -7,6 +7,7 @@ build/
 release/
 *.apk
 *.so
+!app/src/main/jniLibs/**/libwireguard.so
 .externalNativeBuild
 .cxx
 *.zip

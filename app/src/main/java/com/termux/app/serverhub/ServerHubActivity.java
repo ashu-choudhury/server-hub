@@ -1,13 +1,18 @@
 package com.termux.app.serverhub;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,7 +27,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.termux.R;
-import com.termux.app.TermuxActivity;
 import com.termux.app.models.wireguard.PortRule;
 import com.termux.app.models.wireguard.WireGuardConfig;
 import com.termux.app.models.wireguard.WireGuardNetworkStore;
@@ -43,9 +47,26 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
     private SwitchMaterial switchTunnel;
     private TextView tvEmptyPorts;
     private RecyclerView rvPorts;
+    private TextView tvLogs;
+    private ScrollView scrollLogs;
 
     private final ActivityResultLauncher<String> importConfLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), this::onConfFileSelected);
+
+    private final BroadcastReceiver logReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null && WireGuardService.ACTION_LOG_UPDATE.equals(intent.getAction())) {
+                String logLine = intent.getStringExtra(WireGuardService.EXTRA_LOG_LINE);
+                if (logLine != null && tvLogs != null) {
+                    tvLogs.append(logLine + "\n");
+                    if (scrollLogs != null) {
+                        scrollLogs.post(() -> scrollLogs.fullScroll(View.FOCUS_DOWN));
+                    }
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -58,6 +79,26 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         loadCurrentState();
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter(WireGuardService.ACTION_LOG_UPDATE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(logReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(logReceiver, filter);
+        }
+        syncTunnelState();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        try {
+            unregisterReceiver(logReceiver);
+        } catch (Exception ignored) {}
+    }
+
     private void initViews() {
         tvStatusBadge = findViewById(R.id.tv_status_badge);
         tvTunnelAddress = findViewById(R.id.tv_tunnel_address);
@@ -65,6 +106,8 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         switchTunnel = findViewById(R.id.switch_tunnel);
         tvEmptyPorts = findViewById(R.id.tv_empty_ports);
         rvPorts = findViewById(R.id.rv_ports);
+        tvLogs = findViewById(R.id.tv_logs);
+        scrollLogs = findViewById(R.id.scroll_logs);
 
         MaterialButton btnImportConf = findViewById(R.id.btn_import_conf);
         btnImportConf.setOnClickListener(v -> importConfLauncher.launch("*/*"));
@@ -72,11 +115,12 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         MaterialButton btnAddPort = findViewById(R.id.btn_add_port);
         btnAddPort.setOnClickListener(v -> showAddPortDialog());
 
-        MaterialButton btnOpenTerminal = findViewById(R.id.btn_open_terminal);
-        btnOpenTerminal.setOnClickListener(v -> {
-            Intent intent = new Intent(ServerHubActivity.this, TermuxActivity.class);
-            startActivity(intent);
-        });
+        MaterialButton btnClearLogs = findViewById(R.id.btn_clear_logs);
+        if (btnClearLogs != null) {
+            btnClearLogs.setOnClickListener(v -> {
+                if (tvLogs != null) tvLogs.setText("[Logs cleared]\n");
+            });
+        }
 
         portRulesAdapter = new PortRulesAdapter(this);
         rvPorts.setLayoutManager(new LinearLayoutManager(this));
@@ -92,29 +136,44 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 }
                 boolean generated = networkStore.generateWireproxyConfig();
                 if (generated) {
-                    networkStore.setTunnelActive(true);
+                    WireGuardService.start(this);
                     updateStatusUI(true);
-                    Toast.makeText(this, "Userspace WireGuard configuration generated and active!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Starting userspace WireGuard...", Toast.LENGTH_SHORT).show();
                 } else {
                     buttonView.setChecked(false);
                     Toast.makeText(this, "Failed to write WireGuard config", Toast.LENGTH_SHORT).show();
                 }
             } else {
-                networkStore.setTunnelActive(false);
+                WireGuardService.stop(this);
                 updateStatusUI(false);
                 Toast.makeText(this, "WireGuard Tunnel Stopped", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    private void syncTunnelState() {
+        boolean running = WireGuardService.isRunning() || networkStore.isTunnelActive();
+        switchTunnel.setChecked(running);
+        updateStatusUI(running);
+
+        List<String> logs = WireGuardService.getRecentLogs();
+        if (!logs.isEmpty() && tvLogs != null) {
+            StringBuilder sb = new StringBuilder();
+            for (String l : logs) {
+                sb.append(l).append("\n");
+            }
+            tvLogs.setText(sb.toString());
+            if (scrollLogs != null) {
+                scrollLogs.post(() -> scrollLogs.fullScroll(View.FOCUS_DOWN));
+            }
+        }
+    }
+
     private void loadCurrentState() {
         WireGuardConfig config = networkStore.getConfig();
         updateConfigUI(config);
 
-        boolean active = networkStore.isTunnelActive();
-        switchTunnel.setChecked(active);
-        updateStatusUI(active);
-
+        syncTunnelState();
         refreshPortRules();
     }
 
@@ -132,7 +191,7 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
     private void updateStatusUI(boolean active) {
         if (active) {
-            tvStatusBadge.setText("TUNNEL: ACTIVE");
+            tvStatusBadge.setText("TUNNEL: RUNNING");
             tvStatusBadge.setTextColor(Color.parseColor("#B9F6CA"));
             tvStatusBadge.setBackgroundColor(Color.parseColor("#1B5E20"));
         } else {
@@ -208,6 +267,11 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 networkStore.addPortRule(rule);
                 networkStore.generateWireproxyConfig();
                 refreshPortRules();
+
+                if (switchTunnel.isChecked()) {
+                    WireGuardService.stop(this);
+                    WireGuardService.start(this);
+                }
                 Toast.makeText(this, "Port " + port + " (" + protocol.toUpperCase() + ") added", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Cancel", null)
@@ -226,6 +290,11 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         }
         networkStore.savePortRules(rules);
         networkStore.generateWireproxyConfig();
+
+        if (switchTunnel.isChecked()) {
+            WireGuardService.stop(this);
+            WireGuardService.start(this);
+        }
     }
 
     @Override
@@ -233,6 +302,11 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
         networkStore.removePortRule(rule.getId());
         networkStore.generateWireproxyConfig();
         refreshPortRules();
+
+        if (switchTunnel.isChecked()) {
+            WireGuardService.stop(this);
+            WireGuardService.start(this);
+        }
         Toast.makeText(this, "Port rule removed", Toast.LENGTH_SHORT).show();
     }
 }

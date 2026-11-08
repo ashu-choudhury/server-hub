@@ -31,7 +31,7 @@ android {
         implementation "com.google.guava:guava:24.1-jre"
         implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
 
-        implementation project(":terminal-view")
+        implementation project(":terminal-emulator")
         implementation project(":termux-shared")
     }
 

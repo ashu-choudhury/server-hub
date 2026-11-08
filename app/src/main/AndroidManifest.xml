@@ -60,30 +60,9 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".app.TermuxActivity"
-            android:exported="true"
-            android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
-            android:label="Server Terminal"
-            android:launchMode="singleTask"
-            android:resizeableActivity="true"
-            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
-            tools:targetApi="n">
-        </activity>
-
-        <activity-alias
-            android:name=".HomeActivity"
-            android:exported="true"
-            android:targetActivity=".app.TermuxActivity">
-
-            <!-- Launch activity automatically on boot on Android Things devices -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.IOT_LAUNCHER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity-alias>
+        <service
+            android:name=".app.serverhub.WireGuardService"
+            android:exported="false" />
 
         <activity
             android:name=".shared.activities.ReportActivity"
