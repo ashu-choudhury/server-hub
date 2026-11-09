@@ -37,6 +37,8 @@ import com.termux.app.models.wireguard.PortRule;
 import com.termux.app.models.wireguard.WireGuardConfig;
 import com.termux.app.models.wireguard.WireGuardNetworkStore;
 
+import java.io.File;
+import java.util.Locale;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -75,12 +77,15 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
     // Settings Tab Views
     private TextView tvSettingsConfSummary;
+    private TextView tvSettingsCurrentVersion;
     private MaterialButton btnImportConf;
     private MaterialButton btnChangePassword;
     private MaterialButton btnBatterySettings;
     private MaterialButton btnExportBackup;
     private MaterialButton btnRestoreBackup;
+    private MaterialButton btnCheckUpdates;
     private MaterialButton btnOpenSetup;
+    private MaterialButton btnEraseAllData;
 
     private boolean isInternalTunnelChange = false;
     private boolean isInternalFirewallChange = false;
@@ -200,12 +205,18 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
 
         // Settings Tab
         tvSettingsConfSummary = findViewById(R.id.tv_settings_conf_summary);
+        tvSettingsCurrentVersion = findViewById(R.id.tv_settings_current_version);
+        if (tvSettingsCurrentVersion != null) {
+            tvSettingsCurrentVersion.setText("Server Hub v" + com.termux.BuildConfig.VERSION_NAME);
+        }
         btnImportConf = findViewById(R.id.btn_import_conf);
         btnChangePassword = findViewById(R.id.btn_change_password);
         btnBatterySettings = findViewById(R.id.btn_battery_settings);
         btnExportBackup = findViewById(R.id.btn_export_backup);
         btnRestoreBackup = findViewById(R.id.btn_restore_backup);
+        btnCheckUpdates = findViewById(R.id.btn_check_updates);
         btnOpenSetup = findViewById(R.id.btn_open_setup);
+        btnEraseAllData = findViewById(R.id.btn_erase_all_data);
 
         // Single-tap copy actions
         cardSshConnect.setOnClickListener(v -> copyToClipboard("SSH Command", tvSshConnectCmd.getText().toString()));
@@ -335,6 +346,13 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             intent.putExtra(SetupActivity.EXTRA_FORCE_SETUP, true);
             startActivity(intent);
         });
+
+        if (btnCheckUpdates != null) {
+            btnCheckUpdates.setOnClickListener(v -> checkForUpdates());
+        }
+        if (btnEraseAllData != null) {
+            btnEraseAllData.setOnClickListener(v -> showEraseAllDataConfirmation());
+        }
     }
 
     private void updateFirewallUI(boolean enabled) {
@@ -760,5 +778,184 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
             })
             .setNegativeButton("Cancel", null)
             .show();
+    }
+
+    private void checkForUpdates() {
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+            .setTitle("Checking for Updates")
+            .setMessage("Checking GitHub releases for the latest version...")
+            .setCancelable(false)
+            .create();
+        progressDialog.show();
+
+        UpdateManager.checkUpdate(this, new UpdateManager.CheckCallback() {
+            @Override
+            public void onUpdateAvailable(@NonNull UpdateManager.ReleaseInfo releaseInfo) {
+                progressDialog.dismiss();
+                StringBuilder msg = new StringBuilder();
+                msg.append("A new release of Server Hub is available!\n\n");
+                msg.append("• Version: ").append(releaseInfo.tagName).append(" (Current: v").append(com.termux.BuildConfig.VERSION_NAME).append(")\n");
+                msg.append("• Package: ").append(releaseInfo.apkName).append("\n");
+                msg.append(String.format(Locale.US, "• Size: %.1f MB\n\n", releaseInfo.getSizeMb()));
+                if (!releaseInfo.notes.isEmpty()) {
+                    msg.append("Release Notes:\n").append(releaseInfo.notes).append("\n\n");
+                }
+                msg.append("Would you like to download and install this update now?");
+
+                new AlertDialog.Builder(ServerHubActivity.this)
+                    .setTitle("Update Available (" + releaseInfo.tagName + ")")
+                    .setMessage(msg.toString())
+                    .setPositiveButton("Download & Install", (dialog, which) -> {
+                        startUpdateDownload(releaseInfo);
+                    })
+                    .setNegativeButton("Later", null)
+                    .show();
+            }
+
+            @Override
+            public void onAlreadyLatest(@NonNull String currentVersion) {
+                progressDialog.dismiss();
+                new AlertDialog.Builder(ServerHubActivity.this)
+                    .setTitle("You're Up to Date")
+                    .setMessage("Server Hub v" + currentVersion + " is currently the latest version available.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            }
+
+            @Override
+            public void onError(@NonNull String error) {
+                progressDialog.dismiss();
+                new AlertDialog.Builder(ServerHubActivity.this)
+                    .setTitle("Update Check Failed")
+                    .setMessage("Unable to check for updates:\n" + error)
+                    .setPositiveButton("OK", null)
+                    .show();
+            }
+        });
+    }
+
+    private void startUpdateDownload(@NonNull UpdateManager.ReleaseInfo releaseInfo) {
+        android.app.ProgressDialog downloadDialog = new android.app.ProgressDialog(this);
+        downloadDialog.setTitle("Downloading Update");
+        downloadDialog.setMessage("Connecting to GitHub CDN...");
+        downloadDialog.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL);
+        downloadDialog.setMax(100);
+        downloadDialog.setCancelable(false);
+        downloadDialog.show();
+
+        UpdateManager.downloadAndInstall(this, releaseInfo, new UpdateManager.DownloadCallback() {
+            @Override
+            public void onProgress(int percent, long downloadedBytes, long totalBytes) {
+                if (percent >= 0) {
+                    downloadDialog.setProgress(percent);
+                }
+                double dlMb = downloadedBytes / (1024.0 * 1024.0);
+                double totMb = totalBytes / (1024.0 * 1024.0);
+                downloadDialog.setMessage(String.format(Locale.US, "Downloading %s (%.1f / %.1f MB)...",
+                        releaseInfo.apkName, dlMb, totMb));
+            }
+
+            @Override
+            public void onSuccess(@NonNull File apkFile) {
+                downloadDialog.dismiss();
+            }
+
+            @Override
+            public void onError(@NonNull String error) {
+                downloadDialog.dismiss();
+                new AlertDialog.Builder(ServerHubActivity.this)
+                    .setTitle("Download Failed")
+                    .setMessage("Failed to download update APK:\n" + error)
+                    .setPositiveButton("OK", null)
+                    .show();
+            }
+        });
+    }
+
+    private void showEraseAllDataConfirmation() {
+        StringBuilder msg = new StringBuilder();
+        msg.append("This will permanently delete:\n\n");
+        msg.append("• All Linux packages, programs, and dependencies\n");
+        msg.append("• User home directory and personal data\n");
+        msg.append("• SSH keys, logins, and configurations\n");
+        msg.append("• WireGuard configurations and port forwarding rules\n\n");
+        msg.append("Server Hub will be completely wiped and returned to its clean first-launch state.\n\n");
+        msg.append("Are you sure you want to proceed?");
+
+        new AlertDialog.Builder(this)
+            .setTitle("⚠️ Factory Reset & Erase Data?")
+            .setMessage(msg.toString())
+            .setPositiveButton("Erase Everything", (dialog, which) -> {
+                performFactoryReset();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void performFactoryReset() {
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+            .setTitle("Erasing All Data")
+            .setMessage("Stopping services and wiping sandbox...")
+            .setCancelable(false)
+            .create();
+        progressDialog.show();
+
+        new Thread(() -> {
+            try {
+                // 1. Stop background services and daemons
+                WireGuardService.stopService(this);
+                try {
+                    Runtime.getRuntime().exec("pkill -9 sshd").waitFor();
+                    Runtime.getRuntime().exec("pkill -9 libwireguard.so").waitFor();
+                } catch (Exception ignored) {}
+
+                // 2. Clear all SharedPreferences
+                getSharedPreferences("serverhub_setup_prefs", MODE_PRIVATE).edit().clear().commit();
+                getSharedPreferences("termux_setup_prefs", MODE_PRIVATE).edit().clear().commit();
+                getSharedPreferences("server_hub_wireguard_prefs", MODE_PRIVATE).edit().clear().commit();
+                getSharedPreferences("com.termux_preferences", MODE_PRIVATE).edit().clear().commit();
+                SetupPreferences.setSetupCompleted(this, false);
+
+                // 3. Delete files directory contents
+                File filesDir = getFilesDir();
+                deleteRecursive(new File(filesDir, "usr"));
+                deleteRecursive(new File(filesDir, "home"));
+                deleteRecursive(new File(filesDir, "wireguard"));
+                deleteRecursive(new File(filesDir, "apps"));
+                File profileInstalled = new File(filesDir, "profileInstalled");
+                if (profileInstalled.exists()) profileInstalled.delete();
+
+                // 4. Delete cache
+                deleteRecursive(getCacheDir());
+
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Intent intent = new Intent(ServerHubActivity.this, SetupActivity.class);
+                    intent.putExtra(SetupActivity.EXTRA_FORCE_SETUP, true);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    Runtime.getRuntime().exit(0);
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(ServerHubActivity.this, "Reset failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    private static void deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory == null || !fileOrDirectory.exists()) return;
+        if (fileOrDirectory.isDirectory()) {
+            File[] children = fileOrDirectory.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        fileOrDirectory.delete();
     }
 }

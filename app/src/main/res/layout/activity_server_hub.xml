@@ -795,11 +795,71 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Group 5: Reset & Setup -->
+                <!-- Group 5: Updates -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="MAINTENANCE"
+                    android:text="APPLICATION UPDATES"
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="4dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:cardBackgroundColor="#0D0D0D"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="#1A1A1A"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <TextView
+                            android:id="@+id/tv_settings_current_version"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Server Hub v1.0.0"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="4dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Check GitHub releases for new features, stability improvements, and updates."
+                            android:textColor="#CCCCCC"
+                            android:textSize="13sp"
+                            android:layout_marginBottom="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_check_updates"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="Check for Updates"
+                            android:textAllCaps="false"
+                            android:textColor="#00E676"
+                            android:contentDescription="Check GitHub for newer Server Hub releases"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="#00E676" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Group 6: Maintenance & Factory Reset -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MAINTENANCE &amp; RESET"
                     android:textColor="#666666"
                     android:textSize="11sp"
                     android:letterSpacing="0.08"
@@ -841,7 +901,34 @@
                             android:textColor="#888888"
                             android:contentDescription="Relaunch initial setup wizard"
                             app:cornerRadius="12dp"
-                            app:strokeColor="#333333" />
+                            app:strokeColor="#333333"
+                            android:layout_marginBottom="18dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#1A1A1A"
+                            android:layout_marginBottom="16dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Permanently wipe all packages, user files, WireGuard configurations, and reset to clean state."
+                            android:textColor="#888888"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="14dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_erase_all_data"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="Erase All Data (Factory Reset)"
+                            android:textAllCaps="false"
+                            android:textColor="#FF5252"
+                            android:contentDescription="Permanently erase all sandbox data and reset to initial state"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="#FF5252" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
