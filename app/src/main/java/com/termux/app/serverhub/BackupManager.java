@@ -8,6 +8,7 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.termux.shared.termux.TermuxConstants;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -39,7 +40,7 @@ public class BackupManager {
             try {
                 postProgress(callback, "Preparing sandbox files for backup...");
 
-                File appDir = new File("/data/data/com.termux");
+                File appDir = new File(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
                 File filesDir = new File(appDir, "files");
                 if (!filesDir.exists()) {
                     postError(callback, "Sandbox files directory does not exist.");
@@ -47,7 +48,7 @@ public class BackupManager {
                 }
 
                 String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                String filename = "backtalk_backup_" + timestamp + ".tar.gz";
+                String filename = "serverhub_backup_" + timestamp + ".tar.gz";
 
                 // First archive directly to app cache to ensure write permissions succeed
                 File cacheDir = context.getCacheDir();
@@ -57,7 +58,7 @@ public class BackupManager {
 
                 postProgress(callback, "Compressing Linux environment & configurations...");
 
-                File termuxTar = new File(filesDir, "usr/bin/tar");
+                File termuxTar = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH, "tar");
                 String tarBin = (termuxTar.exists() && termuxTar.canExecute()) ?
                         termuxTar.getAbsolutePath() : "/system/bin/tar";
 
@@ -68,7 +69,7 @@ public class BackupManager {
                     tempArchive.getAbsolutePath(),
                     "--exclude=files/usr/tmp/*",
                     "-C",
-                    "/data/data/com.termux",
+                    TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH,
                     "files",
                     "shared_prefs"
                 };
@@ -150,7 +151,7 @@ public class BackupManager {
                     "-xzf",
                     tempArchive.getAbsolutePath(),
                     "-C",
-                    "/data/data/com.termux"
+                    TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH
                 };
 
                 Process process = Runtime.getRuntime().exec(extractCmd);
@@ -158,7 +159,7 @@ public class BackupManager {
 
                 if (exitCode != 0) {
                     // Try fallback with usr/bin/tar if system tar failed
-                    File termuxTar = new File("/data/data/com.termux/files/usr/bin/tar");
+                    File termuxTar = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH, "tar");
                     if (termuxTar.exists() && termuxTar.canExecute()) {
                         process = Runtime.getRuntime().exec(new String[] {
                             termuxTar.getAbsolutePath(),
@@ -175,17 +176,17 @@ public class BackupManager {
                 try {
                     Runtime.getRuntime().exec(new String[] {
                         "/system/bin/chmod", "-R", "755",
-                        "/data/data/com.termux/files/usr/bin",
-                        "/data/data/com.termux/files/usr/lib",
-                        "/data/data/com.termux/files/usr/libexec"
+                        TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH,
+                        TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH,
+                        TermuxConstants.TERMUX_LIBEXEC_PREFIX_DIR_PATH
                     }).waitFor();
 
                     Runtime.getRuntime().exec(new String[] {
                         "/system/bin/chmod", "700",
-                        "/data/data/com.termux/files/home"
+                        TermuxConstants.TERMUX_HOME_DIR_PATH
                     }).waitFor();
 
-                    File sshDir = new File("/data/data/com.termux/files/home/.ssh");
+                    File sshDir = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, ".ssh");
                     if (sshDir.exists()) {
                         Runtime.getRuntime().exec(new String[] {
                             "/system/bin/chmod", "-R", "700",
@@ -193,7 +194,7 @@ public class BackupManager {
                         }).waitFor();
                     }
 
-                    File etcSsh = new File("/data/data/com.termux/files/usr/etc/ssh");
+                    File etcSsh = new File(TermuxConstants.TERMUX_ETC_PREFIX_DIR_PATH, "ssh");
                     if (etcSsh.exists()) {
                         Runtime.getRuntime().exec(new String[] {
                             "/system/bin/chmod", "755",
@@ -203,8 +204,8 @@ public class BackupManager {
                 } catch (Exception ignored) {}
 
                 // Verify restored state
-                File bash = new File("/data/data/com.termux/files/usr/bin/bash");
-                File sshd = new File("/data/data/com.termux/files/usr/bin/sshd");
+                File bash = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH, "bash");
+                File sshd = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH, "sshd");
 
                 if (!bash.exists() || !sshd.exists()) {
                     postError(callback, "Restore completed but essential binaries (bash/sshd) were not found.");

@@ -7,7 +7,7 @@ import androidx.annotation.NonNull;
 
 public class SetupPreferences {
 
-    private static final String PREF_NAME = "termux_setup_prefs";
+    private static final String PREF_NAME = "serverhub_setup_prefs";
     private static final String KEY_SETUP_COMPLETED = "setup_completed";
     private static final String KEY_PASSWORD_CONFIGURED = "password_configured";
     private static final String KEY_SSH_PORT = "ssh_port";

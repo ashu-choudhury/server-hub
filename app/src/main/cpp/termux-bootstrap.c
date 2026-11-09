@@ -18,7 +18,8 @@ JNIEXPORT jboolean JNICALL Java_com_termux_app_serverhub_ServerManager_nativeCha
     const char *pass = (*env)->GetStringUTFChars(env, jpass, 0);
     if (!pass) return JNI_FALSE;
 
-    void *handle = dlopen("/data/data/com.termux/files/usr/lib/libtermux-auth.so", RTLD_NOW);
+    void *handle = dlopen("/data/data/com.serverhub/files/usr/lib/libtermux-auth.so", RTLD_NOW);
+    if (!handle) handle = dlopen("/data/data/com.termux/files/usr/lib/libtermux-auth.so", RTLD_NOW);
     if (!handle) {
         (*env)->ReleaseStringUTFChars(env, jpass, pass);
         return JNI_FALSE;

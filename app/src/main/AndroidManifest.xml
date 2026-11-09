@@ -52,7 +52,7 @@
         <activity
             android:name=".app.serverhub.SetupActivity"
             android:exported="true"
-            android:label="Server Setup"
+            android:label="@string/application_name"
             android:theme="@style/Theme.ServerHub.Amoled">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -63,7 +63,7 @@
         <activity
             android:name=".app.serverhub.ServerHubActivity"
             android:exported="false"
-            android:label="Server Game Hub"
+            android:label="@string/application_name"
             android:theme="@style/Theme.ServerHub.Amoled" />
 
         <service

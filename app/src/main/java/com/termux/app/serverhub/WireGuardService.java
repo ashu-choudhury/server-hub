@@ -33,11 +33,11 @@ public class WireGuardService extends Service {
     private static final String CHANNEL_ID = "game_server_wireguard_channel";
     private static final int NOTIFICATION_ID = 2026;
 
-    public static final String ACTION_START = "com.termux.app.wireguard.START";
-    public static final String ACTION_STOP = "com.termux.app.wireguard.STOP";
-    public static final String ACTION_LOG_UPDATE = "com.termux.app.wireguard.LOG_UPDATE";
+    public static final String ACTION_START = "com.serverhub.app.wireguard.START";
+    public static final String ACTION_STOP = "com.serverhub.app.wireguard.STOP";
+    public static final String ACTION_LOG_UPDATE = "com.serverhub.app.wireguard.LOG_UPDATE";
     public static final String EXTRA_LOG_LINE = "log_line";
-    public static final String ACTION_HANDSHAKE_OK = "com.termux.app.wireguard.HANDSHAKE_OK";
+    public static final String ACTION_HANDSHAKE_OK = "com.serverhub.app.wireguard.HANDSHAKE_OK";
 
     public interface TunnelStateListener {
         void onTunnelStateChanged(boolean running);
