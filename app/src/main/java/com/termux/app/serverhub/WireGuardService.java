@@ -124,6 +124,10 @@ public class WireGuardService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || ACTION_START.equals(intent.getAction())) {
+            if (intent == null && (networkStore == null || !networkStore.isTunnelActive())) {
+                stopSelf();
+                return START_NOT_STICKY;
+            }
             startTunnel();
         } else if (ACTION_STOP.equals(intent.getAction())) {
             stopTunnel();
@@ -133,16 +137,24 @@ public class WireGuardService extends Service {
     }
 
     private void startTunnel() {
+        WireGuardConfig config = networkStore != null ? networkStore.getConfig() : null;
+        String address = (config != null && !config.getAddress().isEmpty()) ? config.getAddress() : "Active";
+
+        // CRITICAL: Call startForeground immediately to prevent ForegroundServiceDidNotStartInTimeException on Android 8+
+        startForeground(NOTIFICATION_ID, buildNotification("WireGuard Tunnel Active", "IPv6: " + address));
+
         if (isRunning) return;
+
+        if (config == null || !config.isValid()) {
+            appendLog("[ERROR] Cannot start tunnel: Invalid or missing WireGuard configuration.");
+            stopSelf();
+            return;
+        }
 
         acquireWakeLock();
 
         // Ensure internal OpenSSH server is running so port 2222 forwards work
         ServerManager.ensureSSHDRunning(null);
-
-        WireGuardConfig config = networkStore.getConfig();
-        String address = (config != null && !config.getAddress().isEmpty()) ? config.getAddress() : "Active";
-        startForeground(NOTIFICATION_ID, buildNotification("WireGuard Tunnel Active", "IPv6: " + address));
 
         networkStore.generateWireproxyConfig();
         File configFile = networkStore.getWireproxyConfigFile();

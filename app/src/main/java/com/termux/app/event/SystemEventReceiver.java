@@ -53,6 +53,22 @@ public class SystemEventReceiver extends BroadcastReceiver {
 
     public synchronized void onActionBootCompleted(@NonNull Context context, @NonNull Intent intent) {
         TermuxShellManager.onActionBootCompleted(context, intent);
+
+        try {
+            if (com.termux.app.serverhub.SetupPreferences.isSetupCompleted(context)) {
+                Logger.logInfo(LOG_TAG, "Device boot completed: Auto-resuming Server Hub services...");
+                com.termux.app.serverhub.ServerManager.ensureSSHDRunning(null);
+
+                com.termux.app.models.wireguard.WireGuardNetworkStore store =
+                    new com.termux.app.models.wireguard.WireGuardNetworkStore(context);
+                if (store.isTunnelActive() && store.getConfig() != null) {
+                    Logger.logInfo(LOG_TAG, "Resuming WireGuard tunnel service...");
+                    com.termux.app.serverhub.WireGuardService.startService(context);
+                }
+            }
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Error auto-resuming Server Hub on boot", e);
+        }
     }
 
     public synchronized void onActionPackageUpdated(@NonNull Context context, @NonNull Intent intent) {

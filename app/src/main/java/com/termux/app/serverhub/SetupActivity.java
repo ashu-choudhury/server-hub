@@ -247,10 +247,20 @@ public class SetupActivity extends AppCompatActivity {
             btnPage0Next.setEnabled(true);
         }
 
-        if (SetupPreferences.isPasswordConfigured(this) || ServerManager.isSSHDRunning()) {
+        if (SetupPreferences.isPasswordConfigured(this)) {
             tvPage1Status.setText("✓ SSH Password configured and OpenSSH service active.");
             btnPage1Next.setEnabled(true);
             ServerManager.ensureSSHDRunning(null);
+        } else {
+            new Thread(() -> {
+                boolean running = ServerManager.isSSHDRunning();
+                if (running) {
+                    runOnUiThread(() -> {
+                        tvPage1Status.setText("✓ SSH Password configured and OpenSSH service active.");
+                        btnPage1Next.setEnabled(true);
+                    });
+                }
+            }).start();
         }
 
         WireGuardConfig savedConfig = networkStore.getConfig();

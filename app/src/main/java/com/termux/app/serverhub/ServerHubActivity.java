@@ -482,6 +482,18 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                 tvSettingsConfSummary.setText("No WireGuard .conf file imported yet.");
             }
         }
+
+        if (btnBatterySettings != null) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            boolean unrestricted = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+            if (unrestricted) {
+                btnBatterySettings.setText("✓ Battery Optimization: Unrestricted (Optimal for Server)");
+                btnBatterySettings.setTextColor(Color.parseColor("#00E676"));
+            } else {
+                btnBatterySettings.setText("⚠️ Battery Optimization: Restricted (Tap to Exempt)");
+                btnBatterySettings.setTextColor(Color.parseColor("#FFB300"));
+            }
+        }
     }
 
     private void onConfFileSelected(@Nullable Uri uri) {
