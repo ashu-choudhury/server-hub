@@ -197,9 +197,44 @@ public class BackupManager {
                     File etcSsh = new File(TermuxConstants.TERMUX_ETC_PREFIX_DIR_PATH, "ssh");
                     if (etcSsh.exists()) {
                         Runtime.getRuntime().exec(new String[] {
-                            "/system/bin/chmod", "755",
+                            "/system/bin/chmod", "700",
                             etcSsh.getAbsolutePath()
                         }).waitFor();
+                        File[] hostKeys = etcSsh.listFiles();
+                        if (hostKeys != null) {
+                            for (File hk : hostKeys) {
+                                if (hk.getName().startsWith("ssh_host_") && !hk.getName().endsWith(".pub")) {
+                                    Runtime.getRuntime().exec(new String[] {
+                                        "/system/bin/chmod", "600",
+                                        hk.getAbsolutePath()
+                                    }).waitFor();
+                                }
+                            }
+                        }
+                    }
+
+                    File sharedPrefsDir = new File(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH, "shared_prefs");
+                    if (sharedPrefsDir.exists()) {
+                        Runtime.getRuntime().exec(new String[] {
+                            "/system/bin/chmod", "771",
+                            sharedPrefsDir.getAbsolutePath()
+                        }).waitFor();
+                        File[] prefFiles = sharedPrefsDir.listFiles();
+                        if (prefFiles != null) {
+                            for (File pf : prefFiles) {
+                                Runtime.getRuntime().exec(new String[] {
+                                    "/system/bin/chmod", "660",
+                                    pf.getAbsolutePath()
+                                }).waitFor();
+                            }
+                        }
+
+                        // Duplicate/migrate termux_setup_prefs to serverhub_setup_prefs if needed
+                        File legacyPref = new File(sharedPrefsDir, "termux_setup_prefs.xml");
+                        File newPref = new File(sharedPrefsDir, "serverhub_setup_prefs.xml");
+                        if (legacyPref.exists() && (!newPref.exists() || newPref.length() == 0)) {
+                            copyFile(legacyPref, newPref);
+                        }
                     }
                 } catch (Exception ignored) {}
 
@@ -223,6 +258,17 @@ public class BackupManager {
                 }
             }
         }).start();
+    }
+
+    public static void restartApp(@NonNull Context context) {
+        try {
+            android.content.Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                context.startActivity(intent);
+            }
+        } catch (Exception ignored) {}
+        System.exit(0);
     }
 
     private static void copyFile(File src, File dst) throws Exception {

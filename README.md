@@ -3,7 +3,7 @@
 [![Build status](https://github.com/ashu-choudhury/server-hub/workflows/Build/badge.svg)](https://github.com/ashu-choudhury/server-hub/actions)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Android](https://img.shields.io/badge/Platform-Android%207.0%2B-green.svg)](https://developer.android.com)
-[![Package](https://img.shields.io/badge/Package-com.serverhub-orange.svg)](https://github.com/ashu-choudhury/server-hub)
+[![Package](https://img.shields.io/badge/Package-com.termux-orange.svg)](https://github.com/ashu-choudhury/server-hub)
 
 **Server Hub** transforms your Android phone into an ultra-efficient, dedicated, always-on Linux server and game server host. Engineered from the ground up with a streamlined Super AMOLED dark UI, automated first-launch onboarding, built-in OpenSSH server, userspace WireGuard tunneling, and accessible port routing, Server Hub delivers a clean server appliance experience without root.
 
@@ -32,7 +32,7 @@ Download the latest APK release (`server-hub_*.apk`) from the [Releases](https:/
 
 ### 2. First-Launch Setup Wizard
 On initial launch, Server Hub's multi-step Setup Wizard guides you through:
-1. **Sandbox Initialization**: Extracts the isolated Linux userland into private app storage (`/data/data/com.serverhub/`).
+1. **Sandbox Initialization**: Extracts the isolated Linux userland into private app storage (`/data/data/com.termux/`).
 2. **SSH Service Configuration**: Installs `openssh` and `termux-auth`, configures your server user password, and starts `sshd` on port `8022`.
 3. **WireGuard Tunneling (Optional)**: Import or configure your WireGuard client interface (`[Interface]` and `[Peer]`), verify handshake status, and establish a private connection.
 4. **Dashboard Access**: Launches the main Server Hub controller.
@@ -74,10 +74,10 @@ In the **Server Hub** app, add a port routing rule for port `25565` (TCP/UDP) to
 
 | Path | Purpose |
 | :--- | :--- |
-| `/data/data/com.serverhub/files/usr` | Linux `$PREFIX` (binaries, libraries, headers) |
-| `/data/data/com.serverhub/files/usr/bin` | Executables (`bash`, `sshd`, `apt`, `pkg`, `node`, `python`) |
-| `/data/data/com.serverhub/files/home` | User `$HOME` directory (projects, configurations, `.ssh/`) |
-| `/data/data/com.serverhub/files/usr/etc/ssh` | OpenSSH daemon configuration & host keys |
+| `/data/data/com.termux/files/usr` | Linux `$PREFIX` (binaries, libraries, headers) |
+| `/data/data/com.termux/files/usr/bin` | Executables (`bash`, `sshd`, `apt`, `pkg`, `node`, `python`) |
+| `/data/data/com.termux/files/home` | User `$HOME` directory (projects, configurations, `.ssh/`) |
+| `/data/data/com.termux/files/usr/etc/ssh` | OpenSSH daemon configuration & host keys |
 
 ---
 

@@ -481,9 +481,14 @@ public class SetupActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
                     SetupPreferences.setSetupCompleted(SetupActivity.this, true);
-                    Toast.makeText(SetupActivity.this, "Sandbox restored successfully! Welcome back.", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(SetupActivity.this, ServerHubActivity.class));
-                    finish();
+                    new AlertDialog.Builder(SetupActivity.this)
+                        .setTitle("Restore Complete")
+                        .setMessage("Sandbox and configurations restored successfully! Server Hub will now restart to load all restored configurations.")
+                        .setCancelable(false)
+                        .setPositiveButton("Restart Now", (dialog, which) -> {
+                            BackupManager.restartApp(SetupActivity.this);
+                        })
+                        .show();
                 });
             }
 

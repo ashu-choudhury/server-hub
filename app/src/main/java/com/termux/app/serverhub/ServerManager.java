@@ -161,6 +161,9 @@ public class ServerManager {
             // Set via passwd command as fallback/reinforcement
             String cmd = "export PREFIX=" + prefix + "; " +
                          "export PATH=" + prefix + "/bin:$PATH; " +
+                         "export LD_LIBRARY_PATH=" + prefix + "/lib; " +
+                         "chmod 700 " + prefix + "/etc/ssh 2>/dev/null; " +
+                         "chmod 600 " + prefix + "/etc/ssh/ssh_host_* 2>/dev/null; " +
                          "printf \"%s\\n%s\\n\" \"" + escapedPass + "\" \"" + escapedPass + "\" | " + prefix + "/bin/passwd 2>/dev/null; " +
                          prefix + "/bin/ssh-keygen -A 2>/dev/null; " +
                          "pkill sshd 2>/dev/null; " +
@@ -198,6 +201,9 @@ public class ServerManager {
         String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
         String cmd = "export PREFIX=" + prefix + "; " +
                      "export PATH=" + prefix + "/bin:$PATH; " +
+                     "export LD_LIBRARY_PATH=" + prefix + "/lib; " +
+                     "chmod 700 " + prefix + "/etc/ssh 2>/dev/null; " +
+                     "chmod 600 " + prefix + "/etc/ssh/ssh_host_* 2>/dev/null; " +
                      prefix + "/bin/ssh-keygen -A 2>/dev/null; " +
                      "pkill sshd 2>/dev/null; " +
                      prefix + "/bin/sshd";

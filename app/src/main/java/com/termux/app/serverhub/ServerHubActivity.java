@@ -734,12 +734,14 @@ public class ServerHubActivity extends AppCompatActivity implements PortRulesAda
                     public void onSuccess() {
                         runOnUiThread(() -> {
                             progressDialog.dismiss();
-                            loadCurrentState();
-                            ServerManager.ensureSSHDRunning(null);
-                            if (switchTunnel != null && switchTunnel.isChecked()) {
-                                WireGuardService.restartService(ServerHubActivity.this);
-                            }
-                            Toast.makeText(ServerHubActivity.this, "Sandbox restored successfully!", Toast.LENGTH_LONG).show();
+                            new AlertDialog.Builder(ServerHubActivity.this)
+                                .setTitle("Restore Complete")
+                                .setMessage("Sandbox and configurations restored successfully! Server Hub will now restart to load all restored configurations.")
+                                .setCancelable(false)
+                                .setPositiveButton("Restart Now", (dialog, which) -> {
+                                    BackupManager.restartApp(ServerHubActivity.this);
+                                })
+                                .show();
                         });
                     }
 

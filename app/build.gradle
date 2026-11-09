@@ -46,8 +46,8 @@ android {
 
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
-        applicationId "com.serverhub"
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.serverhub"
+        applicationId "com.termux"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
         manifestPlaceholders.TERMUX_APP_NAME = "Server Hub"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Server Hub:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Server Hub:Boot"
