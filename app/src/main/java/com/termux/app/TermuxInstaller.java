@@ -218,6 +218,12 @@ public final class TermuxInstaller {
 
                     Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
 
+                    // Ensure HOME and TMP directories exist
+                    File homeDir = TermuxConstants.TERMUX_HOME_DIR;
+                    if (!homeDir.exists()) homeDir.mkdirs();
+                    File tmpDir = new File(TERMUX_PREFIX_DIR_PATH, "tmp");
+                    if (!tmpDir.exists()) tmpDir.mkdirs();
+
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
 

@@ -30,6 +30,7 @@ import com.termux.app.models.wireguard.PortRule;
 import com.termux.app.models.wireguard.WireGuardConfig;
 import com.termux.app.models.wireguard.WireGuardNetworkStore;
 
+import java.io.File;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -281,6 +282,11 @@ public class SetupActivity extends AppCompatActivity {
         setStep1Progress(15, "Checking sandbox components...");
 
         if (!ServerManager.isBootstrapExtracted()) {
+            // Clean up any partially extracted/corrupt prefix so bootstrap extracts fresh
+            File prefixDir = new File(com.termux.shared.termux.TermuxConstants.TERMUX_PREFIX_DIR_PATH);
+            if (prefixDir.exists()) {
+                com.termux.shared.file.FileUtils.deleteFile("corrupted prefix", prefixDir.getAbsolutePath(), true);
+            }
             setStep1Progress(30, "Extracting core sandbox packages...");
             TermuxInstaller.setupBootstrapIfNeeded(this, () -> {
                 runOnUiThread(() -> {
@@ -298,24 +304,35 @@ public class SetupActivity extends AppCompatActivity {
         ServerManager.installRequiredPackages(new ServerManager.CommandListener() {
             @Override
             public void onOutput(@NonNull String line) {
-                if (line.contains("Unpacking") || line.contains("Setting up")) {
-                    setStep1Progress(80, "Setting up packages...");
-                }
+                android.util.Log.i("SetupActivity", "Install output: " + line);
+                runOnUiThread(() -> {
+                    tvStep1StatusMsg.setText(line);
+                    if (line.contains("Get:") || line.contains("Hit:")) {
+                        setStep1Progress(70, "Downloading packages...");
+                    } else if (line.contains("Unpacking") || line.contains("Preparing")) {
+                        setStep1Progress(85, "Unpacking OpenSSH server...");
+                    } else if (line.contains("Setting up")) {
+                        setStep1Progress(95, "Configuring OpenSSH server...");
+                    }
+                });
             }
 
             @Override
             public void onComplete(int exitCode) {
-                if (exitCode == 0 || ServerManager.isOpenSSHInstalled()) {
-                    setStep1Progress(100, "✓ Environment & OpenSSH Ready!");
-                    btnStep1Start.setEnabled(false);
-                    btnStep1Start.setText("✓ Installation Complete");
-                    btnPage0Next.setEnabled(true);
-                    Toast.makeText(SetupActivity.this, "Step 1 completed! Tap Next.", Toast.LENGTH_SHORT).show();
-                } else {
-                    btnStep1Start.setEnabled(true);
-                    btnStep1Start.setText("Retry Installation");
-                    setStep1Progress(0, "Installation failed. Tap Retry.");
-                }
+                android.util.Log.i("SetupActivity", "Install complete exitCode=" + exitCode + ", sshd=" + ServerManager.isOpenSSHInstalled());
+                runOnUiThread(() -> {
+                    if (exitCode == 0 || ServerManager.isOpenSSHInstalled()) {
+                        setStep1Progress(100, "✓ Environment & OpenSSH Ready!");
+                        btnStep1Start.setEnabled(false);
+                        btnStep1Start.setText("✓ Installation Complete");
+                        btnPage0Next.setEnabled(true);
+                        Toast.makeText(SetupActivity.this, "Step 1 completed! Tap Next.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        btnStep1Start.setEnabled(true);
+                        btnStep1Start.setText("Retry Installation");
+                        setStep1Progress(0, "Installation failed (code " + exitCode + "). Tap Retry.");
+                    }
+                });
             }
         });
     }

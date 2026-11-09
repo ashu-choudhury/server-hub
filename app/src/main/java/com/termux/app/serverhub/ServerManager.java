@@ -78,7 +78,8 @@ public class ServerManager {
         env.put("PREFIX", prefix);
         env.put("HOME", home);
         env.put("PATH", prefix + "/bin:" + prefix + "/bin/applets:/system/bin:/system/xbin");
-        env.put("LD_LIBRARY_PATH", prefix + "/lib");
+        // Android 7+ binaries use DT_RUNPATH; remove LD_LIBRARY_PATH to avoid conflicting with system binaries
+        env.remove("LD_LIBRARY_PATH");
         env.put("LANG", "en_US.UTF-8");
         env.put("TERM", "xterm-256color");
         env.put("TMPDIR", prefix + "/tmp");
@@ -92,11 +93,21 @@ public class ServerManager {
                 String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
                 String home = TermuxConstants.TERMUX_HOME_DIR_PATH;
 
+                File homeDir = new File(home);
+                if (!homeDir.exists()) homeDir.mkdirs();
+
+                File tmpDir = new File(prefix, "tmp");
+                if (!tmpDir.exists()) tmpDir.mkdirs();
+
                 File bashFile = new File(prefix, "bin/bash");
-                String shell = bashFile.exists() ? bashFile.getAbsolutePath() : "/system/bin/sh";
+                String shell = (bashFile.exists() && bashFile.canExecute()) ?
+                        bashFile.getAbsolutePath() : "/system/bin/sh";
+
+                android.util.Log.i("ServerManager", "executeCommand shell: " + shell + " in: " + homeDir.getAbsolutePath());
+                android.util.Log.i("ServerManager", "executeCommand cmd: " + command);
 
                 ProcessBuilder pb = new ProcessBuilder(shell, "-c", command);
-                pb.directory(new File(home));
+                pb.directory(homeDir.exists() ? homeDir : new File(prefix));
                 pb.redirectErrorStream(true);
                 pb.environment().putAll(getTermuxEnvironment());
 
@@ -113,6 +124,7 @@ public class ServerManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         final String out = line;
+                        android.util.Log.d("ServerManager", "stdout: " + out);
                         if (listener != null) {
                             MAIN_HANDLER.post(() -> listener.onOutput(out));
                         }
@@ -120,7 +132,9 @@ public class ServerManager {
                 }
 
                 exitCode = process.waitFor();
+                android.util.Log.i("ServerManager", "executeCommand finished with exitCode: " + exitCode);
             } catch (Exception e) {
+                android.util.Log.e("ServerManager", "executeCommand error", e);
                 final String err = "[ERROR] Execution failed: " + e.getMessage();
                 if (listener != null) {
                     MAIN_HANDLER.post(() -> listener.onOutput(err));
@@ -136,16 +150,49 @@ public class ServerManager {
 
     public static void installRequiredPackages(@Nullable CommandListener listener) {
         String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
-        String cmd = "export PREFIX=" + prefix + "; " +
-                     "export PATH=" + prefix + "/bin:$PATH; " +
-                     "export DEBIAN_FRONTEND=noninteractive; " +
-                     "if [ -f " + prefix + "/bin/pkg ]; then " +
-                     "  pkg update -y && pkg install -y openssh termux-auth curl wget; " +
-                     "else " +
-                     "  apt-get update && apt-get install -y -o Dpkg::Options::=\"--force-confnew\" openssh termux-auth curl wget; " +
-                     "fi";
+        String home = TermuxConstants.TERMUX_HOME_DIR_PATH;
 
-        executeCommand(cmd, null, listener);
+        StringBuilder sb = new StringBuilder();
+        sb.append("export PREFIX=").append(prefix).append("; ");
+        sb.append("export HOME=").append(home).append("; ");
+        sb.append("export PATH=").append(prefix).append("/bin:$PATH; ");
+        sb.append("export TMPDIR=").append(prefix).append("/tmp; ");
+        sb.append("export DEBIAN_FRONTEND=noninteractive; ");
+
+        // Ensure directories exist
+        sb.append("mkdir -p $PREFIX/tmp $HOME $PREFIX/var/lib/dpkg/updates $PREFIX/var/lib/dpkg/info ");
+        sb.append("$PREFIX/var/log/apt $PREFIX/var/cache/apt/archives/partial $PREFIX/var/lib/apt/lists/partial $PREFIX/etc/apt/apt.conf.d; ");
+
+        // Ensure status files exist
+        sb.append("touch $PREFIX/var/lib/dpkg/status $PREFIX/var/lib/dpkg/available 2>/dev/null; ");
+
+        // Ensure reliable sources.list with fallbacks
+        sb.append("echo 'deb https://packages-cf.termux.dev/apt/termux-main/ stable main' > $PREFIX/etc/apt/sources.list; ");
+        sb.append("echo 'deb https://packages.termux.dev/apt/termux-main/ stable main' >> $PREFIX/etc/apt/sources.list; ");
+        sb.append("echo 'deb https://grimler.se/termux/termux-main/ stable main' >> $PREFIX/etc/apt/sources.list; ");
+
+        // Resolve DNS if missing
+        sb.append("if [ ! -s $PREFIX/etc/resolv.conf ]; then ");
+        sb.append("  echo 'nameserver 1.1.1.1' > $PREFIX/etc/resolv.conf; ");
+        sb.append("  echo 'nameserver 8.8.8.8' >> $PREFIX/etc/resolv.conf; ");
+        sb.append("  echo 'nameserver 9.9.9.9' >> $PREFIX/etc/resolv.conf; ");
+        sb.append("fi; ");
+
+        // Recover any pending dpkg configuration
+        sb.append("dpkg --configure -a 2>/dev/null || true; ");
+
+        // Update apt indices
+        sb.append("apt-get update --allow-insecure-repositories 2>&1 || true; ");
+
+        // Install openssh, termux-auth, curl, wget
+        sb.append("apt-get install -y -o Dpkg::Options::='--force-confnew' --no-install-recommends openssh termux-auth curl wget; ");
+
+        // Fallback to pkg if sshd still missing
+        sb.append("if [ ! -f $PREFIX/bin/sshd ] && [ -f $PREFIX/bin/pkg ]; then ");
+        sb.append("  pkg install -y openssh termux-auth curl wget; ");
+        sb.append("fi;");
+
+        executeCommand(sb.toString(), null, listener);
     }
 
     public static void setSSHPassword(@NonNull String password, @Nullable CommandListener listener) {
